@@ -2,9 +2,12 @@ import { useEffect, useState } from 'react'
 import { DepGraph } from './graph.ts'
 import type { Graph } from './types.ts'
 
-// summary.json is always revalidated; its `version` then keys every other shard so they cache per data release.
-let version = ''
+// The build inlines summary.json into index.html (#summary); its `version` keys every other shard,
+// so shard URLs change whenever the data is re-collected and can be cached forever.
 const cache = new Map<string, Promise<unknown>>()
+const inlined = document.getElementById('summary')?.textContent
+let version = inlined ? (JSON.parse(inlined) as { version: string }).version : ''
+if (inlined) cache.set('summary', Promise.resolve(JSON.parse(inlined)))
 
 /**
  * Fetches one shard from /data once per page load.

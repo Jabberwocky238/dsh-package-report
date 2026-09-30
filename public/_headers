@@ -1,0 +1,13 @@
+# Hashed bundles and versioned data shards (?v=<summary.version>) never change under their URL.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+/data/graph.json
+  Cache-Control: public, max-age=31536000, immutable
+/data/packages.json
+  Cache-Control: public, max-age=31536000, immutable
+/data/closures.json
+  Cache-Control: public, max-age=31536000, immutable
+/data/history-*
+  Cache-Control: public, max-age=31536000, immutable
+/data/pkg/*
+  Cache-Control: public, max-age=31536000, immutable

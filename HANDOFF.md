@@ -161,8 +161,9 @@ crontab（`crontab -l` 查看）：
 
 ### 7.1 加载策略（用户要求“尽可能懒加载，每一步按钮都懒”）
 
-- **首屏**只加载 JS 主包（React，约 72 KB gzip）和 `summary.json`，能渲染标题、总览、profile 表、分组。
-- summary 一到，就并行预取 History 模块、`graph.json` 和 `history-0.json`；浏览器空闲时再预取 Packages 模块和 `packages.json`。预取只下载，不渲染。
+- **首屏**只需要 HTML 和 JS 主包（React，约 72 KB gzip）。`vite.config.ts` 里的 `inlineSummary` 插件在构建时把 `summary.json` 嵌进 HTML（`<script id="summary" type="application/json">`），所以首屏不用再发请求。这意味着**数据变了必须重新 build**，`daily.sh` 走的是 `bun run deploy`，已经包含 build。
+- 同一个插件还会往 HTML 里加 `<link rel="modulepreload">`（History 模块和 Chain 模块）和 `<link rel="preload" as="fetch">`（`graph.json`、`history-0.json`），让它们和主 JS 并行下载。已验证 fetch 会复用这些预加载，不会重复下载。
+- 浏览器空闲时再预取 Packages 模块和 `packages.json`。预取只下载，不渲染。
 - 历史区、包列表、闭包区都用 `LazySection`，进入视口 600px 内才挂载。
 - **不要换回 `React.lazy` 加 Suspense**：React 会把每个 Suspense 的显示延后约 300 ms，实测会让历史卡片晚出现约 700 ms。
 - 懒加载的按钮：
@@ -172,8 +173,8 @@ crontab（`crontab -l` 查看）：
   - 「依赖树」：逐级点开，点开一级才渲染一级。
   - 长依赖列表「显示全部」。
 - 搜索、过滤、排序用 `useDeferredValue`，计算期间表格半透明（`.stale`）。
-- 缓存：`summary.json` 每次都向服务器重新验证；其余分片的 URL 带 `?v=<summary.version>`，每次重新采集数据后 version 会变。
-- 性能基准（`node scripts/perf.mjs [url]`，4 倍 CPU 降速）：，首屏约 320 ms，历史卡片约 450 ms，滚动到包列表约 110 ms，各种点击 45 到 150 ms（改造前首屏约 1.8 s）。改动之后要重新测一遍，别让数字倒退。
+- 缓存：`public/_headers` 给 `/assets/*` 和带版本号的数据分片设置了 `max-age=31536000, immutable`。分片 URL 带 `?v=<summary.version>`，重新采集后 version 会变。HTML 保持 Cloudflare 默认的 `max-age=0, must-revalidate`。新增分片文件时，要在 `_headers` 里补上对应规则；`summary.json` 不能设成 immutable。
+- 性能基准（`node scripts/perf.mjs [url]`，4 倍 CPU 降速）：，首屏约 320 ms，历史卡片约 450 ms，滚动到包列表约 110 ms，各种点击 45 到 150 ms（改造前首屏约 1.8 s）。线上（从这台机器访问，经过 Cloudflare DFW 节点，单次往返 200-600 ms）第一次打开首屏约 1.2-1.7 s，基本都花在网络往返上；第二次打开 0 个网络请求，首屏约 0.2-0.4 s。改动之后要重新测一遍，别让数字倒退。
 
 ### 7.2 区块
 
