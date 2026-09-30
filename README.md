@@ -1,5 +1,7 @@
 # DSH 包报告
 
+接手维护请先读 [HANDOFF.md](HANDOFF.md)。
+
 DeepSeek Harness（[deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)）的 workspace 包报告，部署在 <https://dsh-report.app238.com>。
 
 ## 内容

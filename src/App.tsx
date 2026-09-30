@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import data from './data/report.json'
-import { makeLookup } from './deps.ts'
+import { chainStats, makeLookup } from './deps.ts'
 import { DepChain, History } from './History.tsx'
 import type { Package, PackageKind, Profile, Report, RowState } from './types.ts'
 
@@ -17,7 +17,6 @@ const KIND_LABEL: Record<PackageKind, string> = {
 const STATE_LABEL: Record<RowState, string> = { on: '启用', conditional: '条件启用', off: '禁用' }
 const KINDS: PackageKind[] = ['plugin', 'library', 'client', 'unbuilt', 'app']
 
-const short = (name: string) => name.replace(/^@deepseek-ai\/(dsh-)?/, '')
 const count = <T,>(xs: T[], f: (x: T) => boolean) => xs.reduce((n, x) => n + (f(x) ? 1 : 0), 0)
 
 function profileStats(p: Profile) {
@@ -82,7 +81,7 @@ function Profiles({ active, onSelect }: { active: string | null; onSelect: (id: 
           {stats.map(({ p, s }) => (
             <tr key={p.id} className={active === p.id ? 'active' : ''} onClick={() => onSelect(active === p.id ? null : p.id)}>
               <td><code>{p.id}</code></td>
-              <td className="muted">{p.bundles.map(short).join(' + ')}</td>
+              <td className="muted">{p.bundles.join(' + ')}</td>
               <td className="num">{s.rows}</td>
               <td className="num">{s.on}</td>
               <td className="num">{s.conditional}</td>
@@ -159,7 +158,6 @@ function PackageDetail({ p }: { p: Package }) {
   const rows = report.profiles.flatMap((pr) => pr.rows.filter((r) => r.package === p.name).map((r) => ({ profile: pr.id, ...r })))
   return (
     <div className="detail">
-      {p.description && <p>{p.description}</p>}
       <p className="muted"><code>{p.dir}</code>{p.firstSeen && <> · 首次出现 {p.firstSeen}</>}</p>
       {p.entries.length > 0 && (
         <>
@@ -182,8 +180,8 @@ function PackageDetail({ p }: { p: Package }) {
         </>
       )}
       <div className="cols">
-        <div><h4>依赖的 DSH 包（{p.workspaceDeps.length}）</h4><p className="chips">{p.workspaceDeps.map((d) => <span key={d}>{short(d)}</span>)}</p></div>
-        <div><h4>被依赖（{p.dependents.length}）</h4><p className="chips">{p.dependents.map((d) => <span key={d}>{short(d)}</span>)}</p></div>
+        <div><h4>依赖的 DSH 包（{p.workspaceDeps.length}）</h4><p className="chips">{p.workspaceDeps.map((d) => <span key={d}>{d}</span>)}</p></div>
+        <div><h4>被依赖（{p.dependents.length}）</h4><p className="chips">{p.dependents.map((d) => <span key={d}>{d}</span>)}</p></div>
         <div><h4>外部运行时依赖（{p.externalDeps.length}）</h4><p className="chips">{p.externalDeps.map((d) => <span key={d}>{d}</span>)}</p></div>
       </div>
       <DepChain name={p.name} deps={deps} />
@@ -191,7 +189,7 @@ function PackageDetail({ p }: { p: Package }) {
   )
 }
 
-type SortKey = 'name' | 'group' | 'firstSeen' | 'entries' | 'profiles' | 'externalDeps' | 'dependents'
+type SortKey = 'name' | 'group' | 'firstSeen' | 'entries' | 'profiles' | 'workspaceDeps' | 'transitive' | 'depth' | 'externalDeps' | 'dependents'
 
 function Packages({ profile, group }: { profile: string | null; group: string | null }) {
   const [q, setQ] = useState('')
@@ -202,7 +200,11 @@ function Packages({ profile, group }: { profile: string | null; group: string | 
 
   const list = useMemo(() => {
     const needle = q.trim().toLowerCase()
-    const val = (p: Package, k: SortKey) => (k === 'name' || k === 'group' ? p[k] : k === 'firstSeen' ? p.firstSeen ?? '' : p[k].length)
+    const val = (p: Package, k: SortKey) =>
+      k === 'name' || k === 'group' ? p[k]
+        : k === 'firstSeen' ? p.firstSeen ?? ''
+          : k === 'transitive' || k === 'depth' ? chainStats(p.name, deps)[k]
+            : p[k].length
     return report.packages
       .filter((p) => (kind === 'all' || p.kind === kind)
         && (!profile || p.profiles.includes(profile))
@@ -237,7 +239,7 @@ function Packages({ profile, group }: { profile: string | null; group: string | 
       <div className="table-wrap">
         <table className="packages">
           <thead>
-            <tr>{th('name', '包')}{th('group', '分组')}<th>类型</th>{th('firstSeen', '首次出现')}{th('entries', '入口', true)}{th('profiles', 'profile', true)}{th('externalDeps', '外部依赖', true)}{th('dependents', '被依赖', true)}</tr>
+            <tr>{th('name', '包 / 作用')}{th('group', '类型 / 分组')}{th('firstSeen', '首次出现')}{th('entries', '入口', true)}{th('profiles', 'profile')}{th('workspaceDeps', '直接依赖', true)}{th('transitive', '传递', true)}{th('depth', '深', true)}{th('dependents', '被依赖', true)}{th('externalDeps', '外部', true)}</tr>
           </thead>
           <tbody>
             {list.map((p) => (
@@ -251,19 +253,22 @@ function Packages({ profile, group }: { profile: string | null; group: string | 
 }
 
 function PackageRow({ p, open, onToggle }: { p: Package; open: boolean; onToggle: () => void }) {
+  const s = chainStats(p.name, deps)
   return (
     <>
       <tr className={open ? 'open' : ''} onClick={onToggle}>
-        <td><code>{short(p.name)}</code></td>
-        <td className="muted">{p.group}</td>
-        <td><span className={`kind ${p.kind}`}>{KIND_LABEL[p.kind]}</span>{p.bundle && <span className="tag">bundle</span>}</td>
+        <td className="name-cell"><code className="pkg">{p.name}</code><div className="desc">{p.description}</div></td>
+        <td><span className={`kind ${p.kind}`}>{KIND_LABEL[p.kind]}</span>{p.bundle && <span className="tag">bundle</span>}<div className="desc">{p.group}</div></td>
         <td className="muted">{p.firstSeen ?? ''}</td>
         <td className="num">{p.entries.length || ''}</td>
-        <td className="num" title={p.profiles.join(', ')}>{p.profiles.length || ''}</td>
-        <td className="num">{p.externalDeps.length || ''}</td>
+        <td className="profiles-cell">{p.profiles.length === report.profiles.length ? <span className="ptag all">全部</span> : p.profiles.map((x) => <span key={x} className="ptag">{x}</span>)}</td>
+        <td className="num">{p.workspaceDeps.length || ''}</td>
+        <td className="num">{s.transitive || ''}</td>
+        <td className="num">{s.depth || ''}</td>
         <td className="num">{p.dependents.length || ''}</td>
+        <td className="num">{p.externalDeps.length || ''}</td>
       </tr>
-      {open && <tr className="detail-row"><td colSpan={8}><PackageDetail p={p} /></td></tr>}
+      {open && <tr className="detail-row"><td colSpan={10}><PackageDetail p={p} /></td></tr>}
     </>
   )
 }

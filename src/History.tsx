@@ -1,29 +1,9 @@
-import { useMemo, useState, type ReactNode } from 'react'
-import type { DepsLookup } from './deps.ts'
-import type { AddedPackage, Day, Package } from './types.ts'
+import { useMemo, useState } from 'react'
+import { chainStats, type DepsLookup } from './deps.ts'
+import type { AddedPackage, Day, Package, PackageKind } from './types.ts'
 
-const short = (name: string) => name.replace(/^@deepseek-ai\/(dsh-)?/, '')
-
-function chainStats(root: string, deps: DepsLookup) {
-  const depth = new Map<string, number>([[root, 0]])
-  const via = new Map<string, string>()
-  const queue = [root]
-  while (queue.length) {
-    const n = queue.shift()!
-    for (const d of deps(n)) {
-      if (depth.has(d)) continue
-      depth.set(d, depth.get(n)! + 1)
-      via.set(d, n)
-      queue.push(d)
-    }
-  }
-  depth.delete(root)
-  let deepest = root
-  for (const [n, k] of depth) if (k > (depth.get(deepest) ?? 0)) deepest = n
-  const path = [deepest]
-  while (via.has(path[0])) path.unshift(via.get(path[0])!)
-  return { transitive: depth.size, depth: depth.get(deepest) ?? 0, longest: deepest === root ? [] : path }
-}
+const KIND_SHORT: Record<PackageKind, string> = { plugin: '插件', library: '库', client: 'client', unbuilt: '未构建', app: '应用' }
+const PAGE = 10
 
 function TreeNode({ name, deps, seen, level }: { name: string; deps: DepsLookup; seen: Set<string>; level: number }) {
   const children = deps(name)
@@ -34,7 +14,7 @@ function TreeNode({ name, deps, seen, level }: { name: string; deps: DepsLookup;
     <li>
       <span className={children.length && !repeated ? 'tree-toggle' : 'tree-leaf'} onClick={() => !repeated && setOpen(!open)}>
         {children.length && !repeated ? (open ? '▾ ' : '▸ ') : '· '}
-        <code>{short(name)}</code>
+        <code>{name}</code>
         {children.length > 0 && <span className="muted"> ({children.length})</span>}
         {repeated && <span className="muted"> ↺</span>}
       </span>
@@ -45,16 +25,24 @@ function TreeNode({ name, deps, seen, level }: { name: string; deps: DepsLookup;
   )
 }
 
+/** One-line chain summary with the longest path. */
+export function ChainLine({ name, deps }: { name: string; deps: DepsLookup }) {
+  const s = chainStats(name, deps)
+  if (!s.transitive) return <span className="muted">无 DSH 依赖</span>
+  return (
+    <span className="path">
+      传递 {s.transitive} · 深 {s.depth} · 最长链：
+      {s.longest.slice(1).map((n, i) => <span key={n}>{i > 0 && <span className="arrow"> → </span>}<code>{n}</code></span>)}
+    </span>
+  )
+}
+
 export function DepChain({ name, deps }: { name: string; deps: DepsLookup }) {
-  const s = useMemo(() => chainStats(name, deps), [name, deps])
   const direct = deps(name)
   return (
     <div className="chain">
       <h4>依赖链条</h4>
-      <p className="muted">直接依赖 {direct.length} 个 DSH 包 · 传递依赖 {s.transitive} 个 · 最深 {s.depth} 层</p>
-      {s.longest.length > 1 && (
-        <p className="path">最长链：{s.longest.map((n, i) => <span key={n}>{i > 0 && ' → '}<code>{short(n)}</code></span>)}</p>
-      )}
+      <p><ChainLine name={name} deps={deps} /></p>
       {direct.length > 0 && <ul className="tree root">{direct.map((d) => <TreeNode key={d} name={d} deps={deps} seen={new Set([name])} level={0} />)}</ul>}
     </div>
   )
@@ -76,72 +64,69 @@ function Sparkline({ days }: { days: Day[] }) {
 
 function AddedItem({ a, deps, current }: { a: AddedPackage; deps: DepsLookup; current?: Package }) {
   const [open, setOpen] = useState(false)
+  const direct = current?.workspaceDeps ?? a.workspaceDeps
   return (
     <li className="added">
-      <div className="added-head" onClick={() => setOpen(!open)}>
-        <span>{open ? '▾' : '▸'} <code>{short(a.name)}</code></span>
-        {current ? <span className={`kind ${current.kind}`}>{current.kind}</span> : <span className="tag">已移除</span>}
-        <span className="muted added-desc">{a.description || '（无描述）'}</span>
+      <div className="added-head">
+        <code className="pkg">{a.name}</code>
+        {current ? <span className={`kind ${current.kind}`}>{KIND_SHORT[current.kind]}</span> : <span className="tag">已移除</span>}
+        <span className="muted mono-sm">{a.dir}</span>
       </div>
-      {open && (
-        <div className="detail">
-          <p className="muted"><code>{a.name}</code> · <code>{a.dir}</code></p>
-          <p className="chips">依赖：{a.workspaceDeps.length ? a.workspaceDeps.map((d) => <span key={d}>{short(d)}</span>) : '无 DSH 依赖'}</p>
-          <DepChain name={a.name} deps={deps} />
-        </div>
-      )}
+      <div className="added-desc">{a.description || <span className="muted">（无描述）</span>}</div>
+      <div className="added-deps">
+        <span className="label">依赖</span>
+        {direct.length ? direct.map((d) => <code key={d}>{d}</code>) : <span className="muted">无</span>}
+      </div>
+      <div className="added-deps">
+        <span className="label">链条</span>
+        <ChainLine name={a.name} deps={deps} />
+        {direct.length > 0 && <button className="link" onClick={() => setOpen(!open)}>{open ? '收起依赖树' : '依赖树'}</button>}
+      </div>
+      {open && <ul className="tree root">{direct.map((d) => <TreeNode key={d} name={d} deps={deps} seen={new Set([a.name])} level={0} />)}</ul>}
     </li>
   )
 }
 
 export function History({ history, packages, deps }: { history: Day[]; packages: Package[]; deps: DepsLookup }) {
   const byName = useMemo(() => new Map(packages.map((p) => [p.name, p])), [packages])
-  const [onlyChanges, setOnlyChanges] = useState(true)
-  const [open, setOpen] = useState<string | null>(history.find((d) => d.added.length)?.day ?? null)
-  const days = onlyChanges ? history.filter((d, i) => d.added.length || d.removed.length || d.version !== history[i + 1]?.version) : history
+  const [shown, setShown] = useState(PAGE)
+  const changed = history
+    .map((d, i) => ({ d, prevVersion: history[i + 1]?.version }))
+    .filter(({ d, prevVersion }) => d.added.length || d.removed.length || d.version !== prevVersion)
   const latest = history[0]
+  const week = history.slice(0, 7)
   return (
     <section>
       <h2>每日版本与新增</h2>
-      <p className="note">
-        沿 upstream master 的 first-parent 提交，每天（北京时间）取最后一个提交比较 workspace 包清单。最新：<b>{latest?.day}</b> · 版本 <code>{latest?.version}</code> · {latest?.total} 个包。
-      </p>
-      <Sparkline days={history} />
-      <label className="toggle"><input type="checkbox" checked={onlyChanges} onChange={(e) => setOnlyChanges(e.target.checked)} /> 只看有新增/删除/版本变化的日子</label>
-      <div className="table-wrap history-wrap">
-        <table className="history">
-          <thead><tr><th>日期</th><th>版本</th><th className="num">包总数</th><th className="num">新增</th><th className="num">删除</th><th>提交</th></tr></thead>
-          <tbody>
-            {days.map((d) => {
-              const i = history.indexOf(d)
-              const bumped = d.version !== history[i + 1]?.version
-              return (
-                <HistoryRow key={d.day} d={d} bumped={bumped} open={open === d.day} onToggle={() => setOpen(open === d.day ? null : d.day)}>
-                  {d.added.length > 0 && <ul className="added-list">{d.added.map((a) => <AddedItem key={a.name} a={a} deps={deps} current={byName.get(a.name)} />)}</ul>}
-                  {d.removed.length > 0 && <p className="chips removed">删除：{d.removed.map((n) => <span key={n}>{short(n)}</span>)}</p>}
-                </HistoryRow>
-              )
-            })}
-          </tbody>
-        </table>
+      <div className="stats compact">
+        <div className="stat"><div className="stat-value">{latest?.version}</div><div className="stat-label">最新版本 · {latest?.day}</div></div>
+        <div className="stat"><div className="stat-value">{latest?.total}</div><div className="stat-label">当前包总数</div></div>
+        <div className="stat"><div className="stat-value plus">+{week.reduce((n, d) => n + d.added.length, 0)}</div><div className="stat-label">近 7 天新增</div></div>
+        <div className="stat"><div className="stat-value minus">{week.reduce((n, d) => n + d.removed.length, 0) ? `-${week.reduce((n, d) => n + d.removed.length, 0)}` : 0}</div><div className="stat-label">近 7 天删除</div></div>
       </div>
+      <Sparkline days={history} />
+      <p className="note">沿 upstream master 的 first-parent 提交，每天（北京时间）取最后一个提交比较 workspace 包清单。下面列出有新增、删除或版本变化的日子，共 {changed.length} 天。</p>
+      <div className="days">
+        {changed.slice(0, shown).map(({ d, prevVersion }) => (
+          <article key={d.day} className="day">
+            <header className="day-head">
+              <b>{d.day}</b>
+              <code className={d.version !== prevVersion ? 'bumped' : ''}>{d.version ?? '-'}</code>
+              {d.version !== prevVersion && prevVersion && <span className="muted">← {prevVersion}</span>}
+              <span className="muted">{d.total} 个包</span>
+              {d.added.length > 0 && <span className="plus">+{d.added.length}</span>}
+              {d.removed.length > 0 && <span className="minus">-{d.removed.length}</span>}
+              <a className="commit" href={`https://github.com/deepseek-ai/deepseek-harness/commit/${d.commit}`} target="_blank" rel="noreferrer"><code>{d.commit.slice(0, 10)}</code></a>
+            </header>
+            {d.added.length > 0 && <ul className="added-list">{d.added.map((a) => <AddedItem key={a.name} a={a} deps={deps} current={byName.get(a.name)} />)}</ul>}
+            {d.removed.length > 0 && <p className="chips removed"><span className="label">删除</span>{d.removed.map((n) => <code key={n}>{n}</code>)}</p>}
+            {!d.added.length && !d.removed.length && <p className="muted small">仅版本变化，包清单不变。</p>}
+          </article>
+        ))}
+      </div>
+      {shown < changed.length && (
+        <button className="more" onClick={() => setShown(shown + PAGE)}>再显示 {Math.min(PAGE, changed.length - shown)} 天（剩 {changed.length - shown} 天）</button>
+      )}
     </section>
-  )
-}
-
-function HistoryRow({ d, bumped, open, onToggle, children }: { d: Day; bumped: boolean; open: boolean; onToggle: () => void; children: ReactNode }) {
-  const expandable = d.added.length > 0 || d.removed.length > 0
-  return (
-    <>
-      <tr className={`${open ? 'open' : ''} ${expandable ? '' : 'static'}`} onClick={expandable ? onToggle : undefined}>
-        <td>{expandable ? (open ? '▾ ' : '▸ ') : ''}{d.day}</td>
-        <td>{d.version ? <code className={bumped ? 'bumped' : ''}>{d.version}</code> : '-'}</td>
-        <td className="num">{d.total}</td>
-        <td className="num plus">{d.added.length ? `+${d.added.length}` : ''}</td>
-        <td className="num minus">{d.removed.length ? `-${d.removed.length}` : ''}</td>
-        <td><a href={`https://github.com/deepseek-ai/deepseek-harness/commit/${d.commit}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}><code>{d.commit.slice(0, 10)}</code></a></td>
-      </tr>
-      {open && <tr className="detail-row"><td colSpan={6}>{children}</td></tr>}
-    </>
   )
 }
