@@ -57,3 +57,20 @@ export function useGraph(): { graph?: DepGraph; error?: string } {
   if (!g) graphs.set(data, (g = new DepGraph(data)))
   return { graph: g }
 }
+
+/**
+ * Loads several shards in parallel.
+ * @param names - shard names; the hook reloads when the joined list changes.
+ * @returns all shards in order once every one has loaded.
+ */
+export function useShards<T>(names: string[]): { data?: T[]; error?: string } {
+  const key = names.join('\n')
+  const [state, setState] = useState<{ key: string; data?: T[]; error?: string }>({ key: '' })
+  useEffect(() => {
+    let live = true
+    Promise.all(key.split('\n').map((n) => fetchShard<T>(n)))
+      .then((data) => live && setState({ key, data }), (e: Error) => live && setState({ key, error: e.message }))
+    return () => { live = false }
+  }, [key])
+  return state.key === key ? state : {}
+}

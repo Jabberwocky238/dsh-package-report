@@ -35,6 +35,19 @@ export class DepGraph {
     return `pkg/${this.index.get(name)}`
   }
 
+  /** @returns every transitive DSH dependency of `name` in breadth-first order. */
+  transitive(name: string): string[] {
+    const seen = new Set<string>([name])
+    const queue = [name]
+    for (let q = 0; q < queue.length; q++) for (const d of this.deps(queue[q])) if (!seen.has(d)) { seen.add(d); queue.push(d) }
+    return queue.slice(1)
+  }
+
+  /** @returns every package name in the graph. */
+  names(): readonly string[] {
+    return this.g.names
+  }
+
   /** Breadth-first walk of the DSH dependencies of `name`. */
   chain(name: string): ChainStats {
     const root = this.index.get(name)

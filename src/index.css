@@ -217,3 +217,19 @@ table.packages td { vertical-align: top; }
 .small-inline { font-size: 12px; }
 .repo .chips span { font-size: 11px; }
 @media (max-width: 640px) { .repo-list { grid-template-columns: 1fr; } }
+.repo.official { border-color: var(--accent); background: var(--accent-bg); }
+
+/* repository filters */
+.tabs { display: inline-flex; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; margin-bottom: 10px; }
+.tabs button { font: inherit; font-size: 13.5px; padding: 5px 16px; border: none; background: var(--panel); color: var(--text); cursor: pointer; }
+.tabs button + button { border-left: 1px solid var(--border); }
+.tabs button.on { background: var(--accent); color: #fff; }
+.tabs button b { margin-left: 3px; font-variant-numeric: tabular-nums; }
+.facet { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-bottom: 8px; }
+.facet-chip { font: inherit; font-size: 12.5px; padding: 2px 9px; border: 1px solid var(--border); border-radius: 99px; background: var(--panel); color: var(--text); cursor: pointer; }
+.facet-chip b { color: var(--muted); font-weight: 500; margin-left: 2px; font-variant-numeric: tabular-nums; }
+.facet-chip.on { border-color: var(--accent); background: var(--accent); color: #fff; }
+.facet-chip.on b { color: rgba(255, 255, 255, 0.85); }
+.topic-search { font: inherit; font-size: 12.5px; padding: 2px 9px; width: 110px; border: 1px solid var(--border); border-radius: 99px; background: var(--panel); color: var(--text); }
+.topic { font: inherit; font-family: var(--mono); font-size: 11px; padding: 1px 6px; border: none; border-radius: 4px; background: var(--code-bg); color: var(--text); cursor: pointer; }
+.topic:hover, .topic.on { background: var(--accent-bg); color: var(--accent); }

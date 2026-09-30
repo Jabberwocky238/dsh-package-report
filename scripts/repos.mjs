@@ -11,6 +11,8 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const TOPICS = ['deepseek-harness', 'dsh']
+// Repositories owned by these accounts are official; every other owner (including look-alike orgs) is community.
+const OFFICIAL_OWNERS = new Set(['deepseek-ai'])
 const PER_PAGE = 100
 const PAUSE_MS = 2100
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public', 'data', 'repos')
@@ -66,6 +68,7 @@ for (const day of days) {
       if (prev) { if (!prev.matched.includes(topic)) prev.matched.push(topic); return }
       repos.set(r.full_name, {
         name: r.full_name,
+        official: OFFICIAL_OWNERS.has(r.owner.login),
         description: r.description ?? '',
         stars: r.stargazers_count,
         forks: r.forks_count,
@@ -82,7 +85,7 @@ for (const day of days) {
     const start = Date.parse(`${day}T00:00:00+08:00`)
     if ((await collect(topic, start, start + 86400e3 - 1000, add)) < 0) truncated = true
   }
-  const list = [...repos.values()].sort((a, b) => b.stars - a.stars || b.createdAt.localeCompare(a.createdAt))
+  const list = [...repos.values()].sort((a, b) => Number(b.official) - Number(a.official) || b.stars - a.stars || b.createdAt.localeCompare(a.createdAt))
   fs.writeFileSync(path.join(dir, `${day}.json`), JSON.stringify({ day, fetchedAt: new Date().toISOString(), truncated, repos: list }) + '\n')
-  console.log(`${day}: ${list.length} repos${truncated ? ' (truncated: a one-minute window exceeded 1000 results)' : ''}`)
+  console.log(`${day}: ${list.length} repos, ${list.filter((r) => r.official).length} official${truncated ? ' (truncated: a one-minute window exceeded 1000 results)' : ''}`)
 }

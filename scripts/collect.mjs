@@ -285,8 +285,15 @@ const index = new Map(graphNames.map((n, i) => [n, i]))
 const reposDir = path.join(outDir, 'repos')
 const repoDays = (fs.existsSync(reposDir) ? fs.readdirSync(reposDir) : [])
   .filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f))
-  .map((f) => [f.slice(0, 10), readJson(path.join(reposDir, f)).repos.length])
+  .map((f) => {
+    const { repos } = readJson(path.join(reposDir, f))
+    return [f.slice(0, 10), repos.length, repos.filter((r) => r.official).length]
+  })
   .sort((a, b) => b[0].localeCompare(a[0]))
+// Official repositories are few; all of them, newest first, go into the summary.
+const officialRepos = repoDays.flatMap(([day]) => readJson(path.join(reposDir, `${day}.json`)).repos
+  .filter((r) => r.official)
+  .map((r) => ({ day, name: r.name, description: r.description, stars: r.stars, language: r.language, createdAt: r.createdAt })))
 
 const shards = {
   summary: {
@@ -305,8 +312,9 @@ const shards = {
     },
     latest: { day: history[0]?.day, version: history[0]?.version, total: history[0]?.total, weekAdded: week.reduce((n, d) => n + d.added.length, 0), weekRemoved: week.reduce((n, d) => n + d.removed.length, 0) },
     changedDays: changed.length,
-    /** [day, new repository count], newest first. */
+    /** [day, new repository count, official count], newest first. */
     repoDays,
+    officialRepos,
     historyPages: pages.length,
     days: history.map((d) => [d.day, d.total, d.added.length]),
     profiles: profiles.map((p) => ({

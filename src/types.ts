@@ -32,8 +32,10 @@ export interface Summary {
   }
   latest: { day: string; version: string | null; total: number; weekAdded: number; weekRemoved: number }
   changedDays: number
-  /** [day, new repository count], newest first. */
-  repoDays: [string, number][]
+  /** [day, new repository count, official count], newest first. */
+  repoDays: [string, number, number][]
+  /** Every official repository (owner deepseek-ai) across all fetched days, newest first. */
+  officialRepos: { day: string; name: string; description: string; stars: number; language: string | null; createdAt: string }[]
   historyPages: number
   /** [day, total, added count], newest first. */
   days: [string, number, number][]
@@ -105,6 +107,8 @@ export interface RepoDay {
   truncated: boolean
   repos: {
     name: string
+    /** Owner is deepseek-ai; every other owner is community. */
+    official: boolean
     description: string
     stars: number
     forks: number
