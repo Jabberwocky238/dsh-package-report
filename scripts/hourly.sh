@@ -9,6 +9,12 @@ REPORT="$(cd "$(dirname "$0")/.." && pwd)"
 exec 9>"${TMPDIR:-/tmp}/dsh-report.lock"
 flock 9
 
+# Deploys build from the working tree; skip while code outside public/data has uncommitted edits.
+if [ -n "$(git -C "$REPORT" status --porcelain -- . ':!public/data')" ]; then
+  echo "$(date -Is) skipped: uncommitted changes outside public/data" >&2
+  exit 0
+fi
+
 cd "$REPORT"
 node scripts/repos.mjs
 node scripts/collect.mjs "$SRC"

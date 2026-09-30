@@ -103,7 +103,7 @@ bun run deploy                                # 构建并部署到 dsh-report.ap
 5. 执行 `bun run deploy`。
 6. 如果 `public/data/` 有变化，就提交（提交信息为 `data: <北京日期> <上游短 sha>`）并 `git push origin main`。
 
-`hourly.sh` 在每小时第 15 分钟运行，依次执行 `repos.mjs`（昨天和今天）、`collect.mjs`（直接用已经构建好的上游 clone，不拉取也不构建）和 `deploy`。它**不提交**，当天的仓库数据由晚上那次 `daily.sh` 统一提交。两个脚本通过 `flock` 共用 `${TMPDIR:-/tmp}/dsh-report.lock`，不会同时运行。
+`hourly.sh` 在每小时第 15 分钟运行，依次执行 `repos.mjs`（昨天和今天）、`collect.mjs`（直接用已经构建好的上游 clone，不拉取也不构建）和 `deploy`。它**不提交**，当天的仓库数据由晚上那次 `daily.sh` 统一提交。两个脚本通过 `flock` 共用 `${TMPDIR:-/tmp}/dsh-report.lock`，不会同时运行。它们都直接用工作区构建部署，所以只要 `public/data/` 以外还有未提交的改动，就会跳过这一次（日志里记一行 `skipped`）。**改代码时要么尽快提交，要么接受这段时间定时任务不会部署。**
 
 脚本开头把 node、bun、pnpm 所在目录写死进了 PATH，因为 cron 环境没有 nvm。换了 node 版本要改这一行。两个脚本都已在 `env -i HOME=$HOME` 的最小环境下验证过；`gh` 用的是系统 keyring 里的登录，SSH 推送也能用。
 
