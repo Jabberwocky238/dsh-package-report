@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-30T10:00:43.574Z",
+ "generatedAt": "2026-09-30T10:04:02.451Z",
  "source": {
   "commit": "639ed015397290b3745d163aafe02ffee4aa3f84",
   "branch": "master",
@@ -4735,7 +4735,7 @@
     {
      "entry": "./worker",
      "kind": "error",
-     "error": "Unexpected token '.', \"../../dsh-report-src\" is not valid JSON"
+     "error": "Unexpected token '/', \"/home/zq/c\"... is not valid JSON"
     }
    ],
    "workspaceDeps": [
