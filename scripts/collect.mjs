@@ -281,6 +281,13 @@ const graphDeps = new Map(packages.map((p) => [p.name, p.workspaceDeps]))
 for (const d of [...history].reverse()) for (const a of d.added) if (!graphDeps.has(a.name)) { graphNames.push(a.name); graphDeps.set(a.name, a.workspaceDeps) }
 const index = new Map(graphNames.map((n, i) => [n, i]))
 
+// public/data/repos/<day>.json is written by scripts/repos.mjs; only its per-day counts go into the summary.
+const reposDir = path.join(outDir, 'repos')
+const repoDays = (fs.existsSync(reposDir) ? fs.readdirSync(reposDir) : [])
+  .filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f))
+  .map((f) => [f.slice(0, 10), readJson(path.join(reposDir, f)).repos.length])
+  .sort((a, b) => b[0].localeCompare(a[0]))
+
 const shards = {
   summary: {
     version,
@@ -298,6 +305,8 @@ const shards = {
     },
     latest: { day: history[0]?.day, version: history[0]?.version, total: history[0]?.total, weekAdded: week.reduce((n, d) => n + d.added.length, 0), weekRemoved: week.reduce((n, d) => n + d.removed.length, 0) },
     changedDays: changed.length,
+    /** [day, new repository count], newest first. */
+    repoDays,
     historyPages: pages.length,
     days: history.map((d) => [d.day, d.total, d.added.length]),
     profiles: profiles.map((p) => ({
@@ -335,7 +344,8 @@ for (const p of packages) {
 }
 pages.forEach((page, i) => { shards[`history-${i}`] = page })
 
-fs.rmSync(outDir, { recursive: true, force: true })
+// Everything under public/data except repos/ is regenerated here.
+if (fs.existsSync(outDir)) for (const f of fs.readdirSync(outDir)) if (f !== 'repos') fs.rmSync(path.join(outDir, f), { recursive: true, force: true })
 fs.mkdirSync(path.join(outDir, 'pkg'), { recursive: true })
 for (const [name, value] of Object.entries(shards)) fs.writeFileSync(path.join(outDir, `${name}.json`), JSON.stringify(value) + '\n')
 console.log(`wrote ${Object.keys(shards).length} shards to ${outDir}: ${packages.length} packages, ${plugins.length} plugins, ${changed.length} changed days`)

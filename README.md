@@ -6,7 +6,8 @@ DeepSeek Harness（[deepseek-ai/deepseek-harness](https://github.com/deepseek-ai
 
 ## 内容
 
-- **总览**：DSH 包总数、Cordis 可加载插件包数、被内置 profile 引用的包数、`dsh` CLI 的外部依赖闭包大小。
+- **总览**：DSH 包总数（不含 `vendor/` 下的 Cordis）、Cordis 可加载插件包数、被内置 profile 引用的包数、`dsh` CLI 的外部依赖闭包大小。
+- **新仓库**：用 `gh` 查询 GitHub 上 topic 为 `deepseek-harness` 或 `dsh`、按北京时间当天创建的仓库，每小时刷新一次，可以按天切换。
 - **每日版本与新增**：沿 upstream `master` 的 first-parent 提交，每天（北京时间）取最后一个提交，给出根 `package.json` 版本、workspace 包总数、新增与删除的包；每个新增包直接列出全称、作用、直接依赖和依赖链条摘要，依赖树可展开。
 - **各 profile 装载的插件**：把 `packages/bundle/*` 的补丁（base + 模式层；web 另加 4 个 preset）按行 id 合并，统计启用、条件启用（`!!js`）和禁用的行。
 - **按分组**：每个 `packages/<group>` 下插件、普通库、Client 包的数量。

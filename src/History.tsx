@@ -60,7 +60,7 @@ const DayCard = memo(function DayCard({ d, graph }: { d: Day; graph: DepGraph })
       </header>
       {d.added.length > 0 && <ul className="added-list">{d.added.map((a) => <AddedItem key={a.name} a={a} graph={graph} />)}</ul>}
       {d.removed.length > 0 && <p className="chips removed"><span className="label">删除</span>{d.removed.map((n) => <code key={n}>{n}</code>)}</p>}
-      {!d.added.length && !d.removed.length && <p className="muted small">仅版本变化，包清单不变。</p>}
+      
     </article>
   )
 })
@@ -77,7 +77,7 @@ export default function History({ summary }: { summary: Summary }) {
   const { latest } = summary
   return (
     <section>
-      <h2>每日版本与新增</h2>
+      <h2>每日版本与新增 <span className="muted">{summary.changedDays} 天有变化</span></h2>
       <div className="stats compact">
         <div className="stat"><div className="stat-value">{latest.version}</div><div className="stat-label">最新版本 · {latest.day}</div></div>
         <div className="stat"><div className="stat-value">{latest.total}</div><div className="stat-label">当前包总数</div></div>
@@ -85,7 +85,6 @@ export default function History({ summary }: { summary: Summary }) {
         <div className="stat"><div className="stat-value minus">{latest.weekRemoved ? `-${latest.weekRemoved}` : 0}</div><div className="stat-label">近 7 天删除</div></div>
       </div>
       <Sparkline days={summary.days} />
-      <p className="note">沿 upstream master 的 first-parent 提交，每天（北京时间）取最后一个提交比较 workspace 包清单。下面列出有新增、删除或版本变化的日子，共 {summary.changedDays} 天，每次加载 10 天。</p>
       <div className="days">
         {graph ? Array.from({ length: pages }, (_, i) => <HistoryPage key={i} page={i} graph={graph} />) : <Loading error={error} />}
       </div>

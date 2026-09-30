@@ -31,10 +31,13 @@ const time = async (label, fn) => {
   console.log(`${label} ${Date.now() - s} ms`)
 }
 await time('scroll to package list', async () => { await p.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); await p.waitForSelector('table.packages tbody tr') })
-await time('load 10 more days', () => p.locator('button.more').first().click())
-await time('dependency tree', () => p.locator('button.link').first().click())
-await time('type filter', () => p.selectOption('.filters select', 'all'))
-await time('search', () => p.fill('.filters input:not([type])', 'session'))
+await time('repos: switch day', async () => { await p.locator('.day-chip').nth(1).click(); await p.waitForSelector('.repo') })
+await time('repos: show 30 more', () => p.locator('section:has(.repo-list) button.more').click())
+await time('history: load 10 more days', () => p.locator('section:has(.days) button.more').click())
+await time('history: dependency tree', () => p.locator('.days button.link').first().click())
+const pkgs = 'section:has(table.packages)'
+await time('type filter', () => p.selectOption(`${pkgs} .filters select`, 'all'))
+await time('search', () => p.fill(`${pkgs} .filters input:not([type])`, 'session'))
 await time('sort', () => p.locator('th.sortable').first().click())
 await time('profile filter', () => p.locator('table.profiles tbody tr').first().click())
 await time('expand package', async () => { await p.locator('table.packages tbody tr').first().click(); await p.waitForSelector('.detail .chain') })

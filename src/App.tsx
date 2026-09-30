@@ -4,6 +4,7 @@ import { KIND_LABEL, KINDS } from './labels.ts'
 import { LazySection, Loading } from './LazySection.tsx'
 import type { Summary } from './types.ts'
 
+const loadRepos = () => import('./Repos.tsx')
 const loadHistory = () => import('./History.tsx')
 const loadPackages = () => import('./Packages.tsx')
 const loadClosures = () => import('./Closures.tsx')
@@ -13,6 +14,7 @@ function usePrefetch(ready: boolean) {
   useEffect(() => {
     if (!ready) return
     const swallow = (e: Error) => console.warn('prefetch failed', e)
+    loadRepos().catch(swallow)
     loadHistory().catch(swallow)
     fetchShard('graph').catch(swallow)
     fetchShard('history-0').catch(swallow)
@@ -46,10 +48,10 @@ function Overview({ s }: { s: Summary }) {
   const t = s.totals
   return (
     <section className="stats">
-      <Stat label="DSH 包总数" value={t.packages} sub={`packages ${t.byGroupKind.packages} · apps ${t.byGroupKind.apps} · 不含 Cordis ${t.cordisExcluded.length} 个`} />
-      <Stat label="Cordis 可加载插件包" value={t.plugins} sub={`${t.entries} 个插件入口（含子路径导出）`} />
-      <Stat label="被内置 profile 引用" value={t.referenced} sub={`${t.unusedPlugins} 个插件包未被任何 profile 引用`} />
-      <Stat label="dsh CLI 外部依赖闭包" value={t.cli?.external ?? '-'} sub={t.cli ? `${t.cli.externalVersions} 个版本 · 带入 ${t.cli.workspace} 个 workspace 包` : undefined} />
+      <Stat label="DSH 包" value={t.packages} sub={`不含 Cordis ${t.cordisExcluded.length} 个`} />
+      <Stat label="Cordis 插件包" value={t.plugins} sub={`${t.entries} 个入口`} />
+      <Stat label="被 profile 引用" value={t.referenced} sub={`${t.unusedPlugins} 个插件未引用`} />
+      <Stat label="dsh CLI 外部依赖" value={t.cli?.external ?? '-'} sub={t.cli ? `${t.cli.externalVersions} 个版本` : undefined} />
     </section>
   )
 }
@@ -58,8 +60,7 @@ function Profiles({ s, active, onSelect }: { s: Summary; active: string | null; 
   const max = Math.max(...s.profiles.map((p) => p.rows))
   return (
     <section>
-      <h2>各 profile 装载的插件</h2>
-      <p className="note">合并 bundle 补丁（base + 模式层；web 另加 4 个 preset）按行 id 计算，只处理 insert 与 disabled。点击一行按该 profile 过滤下方包列表。</p>
+      <h2>profile 插件</h2>
       <table className="profiles">
         <thead>
           <tr><th>profile</th><th>bundle 链</th><th className="num">行</th><th className="num">启用</th><th className="num">条件</th><th className="num">禁用</th><th className="num">包</th><th className="wide" /></tr>
@@ -116,16 +117,16 @@ export default function App() {
       <header>
         <h1>DeepSeek Harness 包报告</h1>
         <p className="muted">
-          v{s.source.version} · <code>{s.source.branch}</code>@<code>{s.source.commit.slice(0, 10)}</code> · 生成于 {new Date(s.generatedAt).toLocaleString('zh-CN')}
+          v{s.source.version} · <code>{s.source.branch}</code>@<code>{s.source.commit.slice(0, 10)}</code> · 生成于 {new Date(s.generatedAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}（北京时间）
         </p>
-        <p className="note">“Cordis 插件”按 Cordis loader 的规则判定：import 包的每个导出入口，<code>default ?? module</code> 为类、函数或带 <code>apply</code> 的对象即算。Cordis 本身（<code>vendor/</code> 下的 {s.totals.cordisExcluded.length} 个包）不算 DSH 包，对它的依赖也不计入依赖与依赖链条。</p>
       </header>
       <Overview s={s} />
+      <LazySection title="新仓库" minHeight={900} load={loadRepos} props={{ summary: s }} />
       <LazySection title="每日版本与新增" minHeight={1200} load={loadHistory} props={{ summary: s }} />
       <Profiles s={s} active={profile} onSelect={setProfile} />
       <Groups s={s} active={group} onSelect={setGroup} />
       <LazySection title="包列表" minHeight={1600} load={loadPackages} props={{ profile, group, allProfiles: s.profiles.length }} />
-      <LazySection title="外部依赖闭包（pnpm-lock.yaml）" minHeight={400} load={loadClosures} props={{}} />
+      <LazySection title="外部依赖闭包" minHeight={400} load={loadClosures} props={{}} />
     </main>
   )
 }

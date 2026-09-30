@@ -32,6 +32,8 @@ export interface Summary {
   }
   latest: { day: string; version: string | null; total: number; weekAdded: number; weekRemoved: number }
   changedDays: number
+  /** [day, new repository count], newest first. */
+  repoDays: [string, number][]
   historyPages: number
   /** [day, total, added count], newest first. */
   days: [string, number, number][]
@@ -93,4 +95,26 @@ export interface Day {
 export interface Closures {
   closures: { root: string; workspace: number; external: number; externalVersions: number; heaviest: { name: string; size: number }[] }[]
   lockfile: { snapshots: number; importers: number }
+}
+
+/** repos/<day>.json: repositories created that Asia/Shanghai day with topic deepseek-harness or dsh. */
+export interface RepoDay {
+  day: string
+  fetchedAt: string
+  /** True when a topic had more than 1000 results that day and the search API cut the list. */
+  truncated: boolean
+  repos: {
+    name: string
+    description: string
+    stars: number
+    forks: number
+    language: string | null
+    topics: string[]
+    createdAt: string
+    pushedAt: string
+    homepage: string | null
+    archived: boolean
+    fork: boolean
+    matched: string[]
+  }[]
 }

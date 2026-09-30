@@ -6,7 +6,7 @@ export default function Closures() {
   const { data, error } = useShard<ClosuresData>('closures')
   return (
     <section>
-      <h2>外部依赖闭包（pnpm-lock.yaml）</h2>
+      <h2>外部依赖闭包</h2>
       {!data ? <Loading error={error} /> : (
         <>
           <div className="closures">
@@ -20,7 +20,6 @@ export default function Closures() {
               </div>
             ))}
           </div>
-          <p className="note">锁文件共 {data.lockfile.snapshots} 个 snapshot、{data.lockfile.importers} 个 importer。右列为该直接依赖自身带入的包数（含平台可选二进制）。</p>
         </>
       )}
     </section>

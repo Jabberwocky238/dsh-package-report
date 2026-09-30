@@ -6,7 +6,7 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 
 /**
  * Inlines public/data/summary.json into index.html and, in builds, preloads what the first lazy section needs
- * (the History chunk and its data shards), so they download in parallel with the main bundle.
+ * (the Repos and History chunks and their data shards), so they download in parallel with the main bundle.
  */
 function inlineSummary(): Plugin {
   return {
@@ -17,10 +17,11 @@ function inlineSummary(): Plugin {
         const raw = fs.readFileSync(new URL('./public/data/summary.json', import.meta.url), 'utf8').trim()
         const { version } = JSON.parse(raw) as { version: string }
         const tags: HtmlTagDescriptor[] = [{ tag: 'script', attrs: { id: 'summary', type: 'application/json' }, children: raw.replace(/</g, '\\u003c'), injectTo: 'head' }]
-        for (const shard of ['graph', 'history-0'])
+        const { repoDays } = JSON.parse(raw) as { repoDays: [string, number][] }
+        for (const shard of ['graph', 'history-0', ...(repoDays.length ? [`repos/${repoDays[0][0]}`] : [])])
           tags.push({ tag: 'link', attrs: { rel: 'preload', as: 'fetch', crossorigin: 'anonymous', href: `/data/${shard}.json?v=${version}` }, injectTo: 'head' })
         for (const chunk of Object.values(ctx.bundle ?? {}))
-          if (chunk.type === 'chunk' && chunk.isDynamicEntry && chunk.name === 'History')
+          if (chunk.type === 'chunk' && chunk.isDynamicEntry && (chunk.name === 'History' || chunk.name === 'Repos'))
             for (const file of [chunk.fileName, ...chunk.imports.filter((f) => !f.includes('/index-'))]) tags.push({ tag: 'link', attrs: { rel: 'modulepreload', href: `/${file}` }, injectTo: 'head' })
         return { html, tags }
       },

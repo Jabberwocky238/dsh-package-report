@@ -25,6 +25,8 @@
 5. 首页要**直接展示足够多的内容**（不用点开就能看到作用、依赖、链条摘要），但**不能太多导致混乱**。依赖树等深层细节放在展开里。
 6. 有这份 HANDOFF.md。
 7. 前端尽可能懒加载，每一步按钮都懒（见 §7.1）。
+9. 减少主页上的描述性废话：只留数据和必要的短标签，规则说明写在本文件和 README 里，不要放到页面上。
+10. 用 gh CLI 获取当日 topic 为 `deepseek-harness` 或 `dsh` 的新仓库（见 §6.8）。
 8. **Cordis 不算包，依赖 Cordis 的不算**：`vendor/` 下的 Cordis 包（cordis、cosmokit、schemastery、cordis-plugin-*，历史上也叫过 `@cordisjs/*`、`cordis`、`cosmokit`、`schemastery`）不计入任何数量、列表、历史；对它们的依赖不算 DSH 依赖，也不算外部依赖，依赖链条到它们就断开。
 
 用户用中文交流，页面文案也用中文。用户的全局规则：不允许使用 plan 模式和 subagent（除非用户明确要求）；使用 sudo 前要告知（本项目用不到 sudo）；默认不要连接远程主机。
@@ -37,7 +39,10 @@ dsh-package-report/
   README.md             面向读者的简介
   scripts/
     collect.mjs         采集器：读 DSH 仓库，写 public/data/ 下的分片 JSON（唯一的数据来源）
-    daily.sh            每日任务：更新上游 clone → 构建 → 采集 → 部署 → 提交推送数据
+    repos.mjs           用 gh 查询 topic 为 deepseek-harness 或 dsh 的新仓库，写入 public/data/repos/<北京日期>.json
+    daily.sh            每日任务：更新上游 clone → 构建 → 新仓库 → 采集 → 部署 → 提交推送数据
+    hourly.sh           每小时任务：新仓库 → 采集 → 部署（不构建、不提交）
+    perf.mjs            4 倍 CPU 降速下测量加载与交互耗时
   public/data/          采集结果（已提交进 git），前端运行时按需 fetch，见 §7.1
   src/
     types.ts            各分片的 TypeScript 类型（改采集字段时同步改这里）
@@ -49,6 +54,7 @@ dsh-package-report/
     History.tsx         懒加载区块「每日版本与新增」（按页加载 history-N）
     Packages.tsx        懒加载区块「包列表」（每次 40 行；展开时才取 pkg/<i>.json）
     Closures.tsx        懒加载区块「外部依赖闭包」
+    Repos.tsx           懒加载区块「新仓库」（按天切换，每次 30 个）
     Chain.tsx           依赖链组件：ChainLine、DepTree（逐级点开才渲染）、TreeToggle、ChipList（长列表先显示 12 个）
     index.css           全部样式；颜色 token 在 :root，深色模式在 prefers-color-scheme
     main.tsx            React 入口
@@ -74,27 +80,32 @@ bun run deploy                                # 构建并部署到 dsh-report.ap
 
 本地预览构建产物用 `npx vite preview --port 4789`。**注意**：preview 启动时会固定当时 dist 的资源清单，重新 build 之后必须重启 preview，否则新的 hash 文件返回 404、页面一片空白。
 
-## 5. 每日自动更新
+## 5. 定时更新
 
-crontab（`crontab -l` 查看）：
+**这台机器的时区是 America/Los_Angeles（PDT，UTC-7），crontab 里的时间按本机时区算**。页面和数据里的“日”都按北京时间（Asia/Shanghai）划分。`crontab -l` 可以查看：
 
 ```cron
 30 6 * * * /home/zq/coding/deepseek-harness/dsh-package-report/scripts/daily.sh >> $HOME/.cache/dsh-report-daily.log 2>&1
+15 * * * * /home/zq/coding/deepseek-harness/dsh-package-report/scripts/hourly.sh >> $HOME/.cache/dsh-report-hourly.log 2>&1
 ```
 
-`daily.sh` 依次执行：
+`daily.sh` 在每天 06:30 PDT（北京时间 21:30）运行，依次执行：
 
 1. 在 `~/coding/dsh-report-src` 里执行 `git fetch origin master` 和 `reset --hard origin/master`。可以用环境变量 `DSH_SRC` 换成别的路径。
 2. 执行 `pnpm install --frozen-lockfile` 和 `pnpm run build`，约 3.5 分钟。
-3. 执行 `node scripts/collect.mjs "$SRC"`。
-4. 执行 `bun run deploy`。
-5. 如果 `public/data/` 有变化，就提交（提交信息为 `data: <日期> <上游短 sha>`）并 `git push origin main`。`generatedAt` 字段每次都会变，所以基本上每天都会产生一个提交。
+3. 执行 `node scripts/repos.mjs`，刷新昨天和今天的新仓库。
+4. 执行 `node scripts/collect.mjs "$SRC"`。
+5. 执行 `bun run deploy`。
+6. 如果 `public/data/` 有变化，就提交（提交信息为 `data: <北京日期> <上游短 sha>`）并 `git push origin main`。
 
-脚本开头把 node、bun、pnpm 所在目录写死进了 PATH，因为 cron 环境没有 nvm。换了 node 版本要改这一行。脚本已在 `env -i HOME=$HOME` 的最小环境下验证过，SSH 推送也能用。
+`hourly.sh` 在每小时第 15 分钟运行，依次执行 `repos.mjs`（昨天和今天）、`collect.mjs`（直接用已经构建好的上游 clone，不拉取也不构建）和 `deploy`。它**不提交**，当天的仓库数据由晚上那次 `daily.sh` 统一提交。两个脚本通过 `flock` 共用 `${TMPDIR:-/tmp}/dsh-report.lock`，不会同时运行。
 
-排查步骤：看 `~/.cache/dsh-report-daily.log`。常见失败原因：
+脚本开头把 node、bun、pnpm 所在目录写死进了 PATH，因为 cron 环境没有 nvm。换了 node 版本要改这一行。两个脚本都已在 `env -i HOME=$HOME` 的最小环境下验证过；`gh` 用的是系统 keyring 里的登录，SSH 推送也能用。
+
+排查步骤：看 `~/.cache/dsh-report-daily.log` 和 `~/.cache/dsh-report-hourly.log`。常见失败原因：
 - 上游改了 lockfile，而 pnpm 版本不匹配。
-- 上游构建失败。这种情况下站点保持前一天的数据，不会部署半成品，因为 `set -e` 会让脚本在第一个失败处退出。
+- 上游构建失败。这种情况下站点保持之前的数据，不会部署半成品，因为 `set -e` 会让脚本在第一个失败处退出。
+- `gh` 登录失效。可以用 `gh auth status` 检查。
 
 ## 6. 数据是怎么算的（`scripts/collect.mjs`）
 
@@ -156,15 +167,24 @@ crontab（`crontab -l` 查看）：
 | `pkg/<i>.json` | 第 i 个包（graph 下标）的详情：dir、插件入口、依赖/被依赖/外部依赖列表、profile 行 | 每个 1-10 KB |
 | `history-<n>.json` | 有变化的日子按 10 天一页，带 `prevVersion`、`added[]`、`removed[]` | 每页 10-20 KB |
 | `closures.json` | 外部依赖闭包与锁文件统计 | 2 KB |
+| `repos/<day>.json` | 由 `repos.mjs` 写入，见 §6.8；summary 里的 `repoDays` 是每天的数量 | 每天 50-700 KB |
 
-采集时会先清空 `public/data/` 再全部重写。
+采集时会清空并重写 `public/data/` 下除 `repos/` 以外的全部内容；`repos/` 只由 `repos.mjs` 改写。
+
+### 6.8 新仓库（`scripts/repos.mjs`）
+
+- 数据源：GitHub 搜索 API（通过 `gh api search/repositories`）。条件是 `topic:deepseek-harness` 或 `topic:dsh`，且 `created:<当天北京时间 00:00:00+08:00>..<23:59:59+08:00>`。两个 topic 分开查，结果按 `full_name` 合并去重，`matched` 字段记录命中了哪些 topic。
+- 默认只刷新昨天和今天；`--since YYYY-MM-DD` 会把从那天到今天逐天回填。现有数据是从 2026-08-13（上游仓库在 GitHub 上创建的日期）开始回填的。
+- 搜索 API 限制每分钟 30 次、每个查询最多返回 1000 条。脚本每次请求后等 2.1 秒，出错时按 30 秒递增退避，最多重试 4 次。如果某天某个 topic 的结果超过 1000 条，就在文件里标记 `truncated: true`，页面上会提示“结果不全”。发布初期 8 月中旬有这种情况；要补全的话，得把一天再按小时拆开查询。
+- 每天的仓库按 star 数倒序排列；页面可以切换成按创建时间排序。
+- “新仓库”指**当天创建**、并且**现在**带这两个 topic 之一的仓库。先创建、后来才加 topic 的仓库，会算在它的创建日期那天；被删除或改成私有的仓库，重新回填时会消失。
 
 ## 7. 页面结构（从上到下）
 
 ### 7.1 加载策略（用户要求“尽可能懒加载，每一步按钮都懒”）
 
 - **首屏**只需要 HTML 和 JS 主包（React，约 72 KB gzip）。`vite.config.ts` 里的 `inlineSummary` 插件在构建时把 `summary.json` 嵌进 HTML（`<script id="summary" type="application/json">`），所以首屏不用再发请求。这意味着**数据变了必须重新 build**，`daily.sh` 走的是 `bun run deploy`，已经包含 build。
-- 同一个插件还会往 HTML 里加 `<link rel="modulepreload">`（History 模块和 Chain 模块）和 `<link rel="preload" as="fetch">`（`graph.json`、`history-0.json`），让它们和主 JS 并行下载。已验证 fetch 会复用这些预加载，不会重复下载。
+- 同一个插件还会往 HTML 里加 `<link rel="modulepreload">`（Repos、History、Chain 模块）和 `<link rel="preload" as="fetch">`（`graph.json`、`history-0.json`、最新一天的 `repos/<day>.json`），让它们和主 JS 并行下载。已验证 fetch 会复用这些预加载，不会重复下载。
 - 浏览器空闲时再预取 Packages 模块和 `packages.json`。预取只下载，不渲染。
 - 历史区、包列表、闭包区都用 `LazySection`，进入视口 600px 内才挂载。
 - **不要换回 `React.lazy` 加 Suspense**：React 会把每个 Suspense 的显示延后约 300 ms，实测会让历史卡片晚出现约 700 ms。
@@ -180,21 +200,22 @@ crontab（`crontab -l` 查看）：
 
 ### 7.2 区块
 
-1. **标题行**：版本号、分支和提交、生成时间，以及插件判定规则的一句说明。
-2. **总览卡片**：DSH 包总数、Cordis 可加载插件包（含插件入口数）、被内置 profile 引用的包数、dsh CLI 外部依赖闭包。
-3. **每日版本与新增**：
+1. **标题行**：版本号、分支和提交、生成时间（北京时间）。
+2. **总览卡片**：DSH 包（不含 Cordis）、Cordis 插件包、被 profile 引用的包数、dsh CLI 外部依赖。
+3. **新仓库**：最近 10 天做成日期按钮（显示当天数量），更早的日期放在下拉框里。每天默认显示 30 个仓库卡片（仓库名链接、star、语言、北京时间的创建时刻、描述、除 deepseek-harness 和 dsh 之外的 topic），「再显示 30 个」加载更多。
+4. **每日版本与新增**：
    - 4 张卡片：最新版本、当前包总数、近 7 天新增、近 7 天删除。
    - 包总数折线图。
    - 按天的卡片，只列有新增、删除或版本变化的日子，默认显示 10 天，底部按钮每次再加载一页（10 天）。
    - 每个新增包直接显示：全称、类型、目录、作用（description）、直接依赖（全称）、链条摘要（传递依赖数、深度、最长链）。“依赖树”按钮展开可逐级展开的树，出现环或重复时显示 ↺。
-4. **各 profile 装载的插件**：每个 profile 的行数、启用、条件启用、禁用、涉及的包数，以及对应的条形图。点击一行可以过滤下方的包列表。
-5. **按分组**：每组的插件、库、client 数量。点击可以过滤包列表。
-6. **包列表**：
+5. **profile 插件**：每个 profile 的行数、启用、条件启用、禁用、涉及的包数，以及对应的条形图。点击一行可以过滤下方的包列表。
+6. **按分组**：每组的插件、库、client 数量。点击可以过滤包列表。
+7. **包列表**：
    - 默认只显示插件，按被依赖数倒序，每次显示 40 行。
    - 每行显示：全称和作用、类型和分组、首次出现日期、入口数、所在 profile（5 个都有时显示“全部”）、直接依赖数、传递依赖数、深度、被依赖数、外部依赖数。
    - 可以搜索，可以按类型、分组、profile 过滤，也可以只看未被 profile 引用的包。点列头排序。
    - 点击一行展开：插件入口、profile 行（状态和条件）、依赖、被依赖、外部依赖和依赖树。
-7. **外部依赖闭包**。
+8. **外部依赖闭包**。
 
 设计约束：信息密度要高但要有层次；桌面宽 1180px，手机宽 390px 时不能横向溢出（宽表格在自己的容器里横向滚动）；浅色和深色都要能看清。改完 UI 要用 Playwright 截图检查桌面和手机两种宽度。Playwright 在 `~/coding/dsh-report-src/node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/index.mjs`，headless Chromium 已下载到 `~/.cache/ms-playwright`。
 

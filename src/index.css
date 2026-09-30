@@ -202,3 +202,18 @@ table.packages td { vertical-align: top; }
 .tree-wrap { flex-basis: 100%; margin-top: 4px; }
 .tree-wrap > .tree { padding-left: 0; }
 .day { content-visibility: auto; contain-intrinsic-size: auto 260px; }
+
+/* new repositories */
+.day-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.day-chip { font: inherit; font-size: 13px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 99px; background: var(--panel); color: var(--text); cursor: pointer; font-variant-numeric: tabular-nums; }
+.day-chip b { color: var(--plus); margin-left: 2px; }
+.day-chip.active { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
+.day-chips select { font: inherit; font-size: 13px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 99px; background: var(--panel); color: var(--text); }
+.repo-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 8px; }
+.repo { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; content-visibility: auto; contain-intrinsic-size: auto 90px; min-width: 0; }
+.repo-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.repo-head .pkg { font-family: var(--mono); color: var(--accent); }
+.repo-stars { font-size: 12.5px; color: var(--conditional); font-variant-numeric: tabular-nums; }
+.small-inline { font-size: 12px; }
+.repo .chips span { font-size: 11px; }
+@media (max-width: 640px) { .repo-list { grid-template-columns: 1fr; } }
