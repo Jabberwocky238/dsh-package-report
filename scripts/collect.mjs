@@ -33,10 +33,13 @@ for (const x of fs.readdirSync(path.join(root, 'vendor')))
 for (const x of fs.readdirSync(path.join(root, 'apps')))
   if (fs.existsSync(path.join(root, 'apps', x, 'package.json'))) dirs.push(['apps', `apps/${x}`])
 
-const manifests = dirs.map(([group, dir]) => ({ group, dir, json: readJson(path.join(root, dir, 'package.json')) }))
+// vendor/ holds Cordis itself (cordis, cosmokit, schemastery, cordis-plugin-*). It is not a DSH package:
+// it is left out of every count, and dependencies on it are dropped rather than reported as external.
+const allManifests = dirs.map(([group, dir]) => ({ group, dir, json: readJson(path.join(root, dir, 'package.json')) }))
+const cordisNames = new Set(allManifests.filter((m) => m.group === 'vendor').map((m) => m.json.name))
+const manifests = allManifests.filter((m) => m.group !== 'vendor')
 const wsNames = new Set(manifests.map((m) => m.json.name))
-// Packages whose default export is callable but is not a plugin.
-const notPlugins = new Set(['@deepseek-ai/schemastery'])
+const isExternal = (d) => !wsNames.has(d) && !cordisNames.has(d)
 
 function classify(value) {
   const e = value?.default ?? value
@@ -71,7 +74,7 @@ for (const { group, dir, json } of manifests) {
       try {
         const kind = classify(await import(pathToFileURL(file).href))
         const entry = sub === '.' ? json.name : `${json.name}/${sub.slice(2)}`
-        if (kind && !notPlugins.has(json.name)) entries.push({ entry, kind })
+        if (kind) entries.push({ entry, kind })
       } catch (err) {
         entries.push({ entry: sub, kind: 'error', error: String(err?.message ?? err).slice(0, 200) })
       }
@@ -89,8 +92,8 @@ for (const { group, dir, json } of manifests) {
     entries: entries.filter((e) => e.kind !== 'error'),
     errors: entries.filter((e) => e.kind === 'error'),
     workspaceDeps: Object.keys({ ...deps, ...peers }).filter((d) => wsNames.has(d)).sort(),
-    externalDeps: Object.keys({ ...deps, ...peers }).filter((d) => !wsNames.has(d)).sort(),
-    externalDevDeps: Object.keys(json.devDependencies ?? {}).filter((d) => !wsNames.has(d)).sort(),
+    externalDeps: Object.keys({ ...deps, ...peers }).filter(isExternal).sort(),
+    externalDevDeps: Object.keys(json.devDependencies ?? {}).filter(isExternal).sort(),
   })
 }
 const byName = new Map(packages.map((p) => [p.name, p]))
@@ -137,7 +140,9 @@ const profileDefs = [
 const profiles = profileDefs.map(({ id, bundles }) => {
   const rows = new Map()
   for (const b of bundles) for (const f of bundlePatches(b)) applyPatch(rows, loadYaml(f))
-  const list = [...rows.values()].map((r) => ({ ...r, package: r.entry.startsWith('cordis:') ? null : pkgOf(r.entry) }))
+  const list = [...rows.values()]
+    .map((r) => ({ ...r, package: r.entry.startsWith('cordis:') ? null : pkgOf(r.entry) }))
+    .filter((r) => !cordisNames.has(r.package))
   return { id, bundles, rows: list }
 })
 for (const p of packages) p.profiles = profiles.filter((pr) => pr.rows.some((r) => r.package === p.name)).map((pr) => pr.id)
@@ -182,7 +187,7 @@ function closure(start) {
   }
   const names = new Set([...extSeen].map((x) => x.replace(/^(@?[^@]+)@.*$/, '$1')))
   return {
-    workspace: wsSeen.size,
+    workspace: [...wsSeen].filter((id) => !id.startsWith('vendor/')).length,
     external: names.size,
     externalVersions: extSeen.size,
     heaviest: [...direct].map(([name, id]) => ({ name, size: subtree(id) })).sort((a, b) => b.size - a.size).slice(0, 15),
@@ -228,7 +233,9 @@ for (const [day, sha] of [...dayCommits].reverse()) {
   const pkgs = new Map()
   for (const [, blob, file] of tree) {
     const j = blobCache.get(blob)
-    if (j?.name) pkgs.set(j.name, { dir: path.posix.dirname(file), json: j })
+    if (!j?.name) continue
+    if (file.startsWith('vendor/')) cordisNames.add(j.name)
+    else pkgs.set(j.name, { dir: path.posix.dirname(file), json: j })
   }
   let version = null
   try { version = JSON.parse(catBatch([`${sha}:package.json`])[0] ?? 'null')?.version ?? null } catch { /* root manifest absent on the first commits */ }
@@ -281,7 +288,8 @@ const shards = {
     source: { commit, branch: git('rev-parse', '--abbrev-ref', 'HEAD'), version: readJson(path.join(root, 'package.json')).version },
     totals: {
       packages: packages.length,
-      byGroupKind: { packages: count(packages, (p) => p.group !== 'vendor' && p.group !== 'apps'), vendor: count(packages, (p) => p.group === 'vendor'), apps: count(packages, (p) => p.group === 'apps') },
+      byGroupKind: { packages: count(packages, (p) => p.group !== 'apps'), apps: count(packages, (p) => p.group === 'apps') },
+      cordisExcluded: [...new Set(allManifests.filter((m) => m.group === 'vendor').map((m) => m.json.name))].sort(),
       plugins: plugins.length,
       entries: plugins.reduce((n, p) => n + p.entries.length, 0),
       referenced: referenced.size,

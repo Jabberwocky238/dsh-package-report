@@ -1,1 +1,1 @@
-{"dir":"packages/client/store","entries":[],"workspaceDeps":["@deepseek-ai/cordis"],"dependents":["@deepseek-ai/dsh-experimental-client-ui-voice-input","@deepseek-ai/dsh-client-test-runtime"],"externalDeps":[],"rows":[]}
+{"dir":"packages/client/store","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-experimental-client-ui-voice-input","@deepseek-ai/dsh-client-test-runtime"],"externalDeps":[],"rows":[]}

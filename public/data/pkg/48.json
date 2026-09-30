@@ -1,1 +1,1 @@
-{"dir":"packages/client/ui-message-feedback","entries":[],"workspaceDeps":["@deepseek-ai/cordis"],"dependents":["@deepseek-ai/dsh-web-app"],"externalDeps":[],"rows":[{"profile":"web","id":"ui-message-feedback","entry":"@deepseek-ai/dsh-client-ui-message-feedback","parent":null,"state":"on"}]}
+{"dir":"packages/client/ui-message-feedback","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-web-app"],"externalDeps":[],"rows":[{"profile":"web","id":"ui-message-feedback","entry":"@deepseek-ai/dsh-client-ui-message-feedback","parent":null,"state":"on"}]}

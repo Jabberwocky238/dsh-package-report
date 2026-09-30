@@ -21,7 +21,9 @@ export interface Summary {
   source: { commit: string; branch: string; version: string }
   totals: {
     packages: number
-    byGroupKind: { packages: number; vendor: number; apps: number }
+    byGroupKind: { packages: number; apps: number }
+    /** Cordis packages under vendor/, excluded from every count and dependency list. */
+    cordisExcluded: string[]
     plugins: number
     entries: number
     referenced: number

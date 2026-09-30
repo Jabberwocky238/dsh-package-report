@@ -46,7 +46,7 @@ function Overview({ s }: { s: Summary }) {
   const t = s.totals
   return (
     <section className="stats">
-      <Stat label="DSH 包总数" value={t.packages} sub={`packages ${t.byGroupKind.packages} · vendor ${t.byGroupKind.vendor} · apps ${t.byGroupKind.apps}`} />
+      <Stat label="DSH 包总数" value={t.packages} sub={`packages ${t.byGroupKind.packages} · apps ${t.byGroupKind.apps} · 不含 Cordis ${t.cordisExcluded.length} 个`} />
       <Stat label="Cordis 可加载插件包" value={t.plugins} sub={`${t.entries} 个插件入口（含子路径导出）`} />
       <Stat label="被内置 profile 引用" value={t.referenced} sub={`${t.unusedPlugins} 个插件包未被任何 profile 引用`} />
       <Stat label="dsh CLI 外部依赖闭包" value={t.cli?.external ?? '-'} sub={t.cli ? `${t.cli.externalVersions} 个版本 · 带入 ${t.cli.workspace} 个 workspace 包` : undefined} />
@@ -118,7 +118,7 @@ export default function App() {
         <p className="muted">
           v{s.source.version} · <code>{s.source.branch}</code>@<code>{s.source.commit.slice(0, 10)}</code> · 生成于 {new Date(s.generatedAt).toLocaleString('zh-CN')}
         </p>
-        <p className="note">“Cordis 插件”按 Cordis loader 的规则判定：import 包的每个导出入口，<code>default ?? module</code> 为类、函数或带 <code>apply</code> 的对象即算。</p>
+        <p className="note">“Cordis 插件”按 Cordis loader 的规则判定：import 包的每个导出入口，<code>default ?? module</code> 为类、函数或带 <code>apply</code> 的对象即算。Cordis 本身（<code>vendor/</code> 下的 {s.totals.cordisExcluded.length} 个包）不算 DSH 包，对它的依赖也不计入依赖与依赖链条。</p>
       </header>
       <Overview s={s} />
       <LazySection title="每日版本与新增" minHeight={1200} load={loadHistory} props={{ summary: s }} />

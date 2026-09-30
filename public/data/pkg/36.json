@@ -1,1 +1,1 @@
-{"dir":"packages/client/ui-brand-official","entries":[],"workspaceDeps":["@deepseek-ai/cordis"],"dependents":["@deepseek-ai/dsh-web-app"],"externalDeps":[],"rows":[{"profile":"web","id":"ui-brand-official","entry":"@deepseek-ai/dsh-client-ui-brand-official","parent":null,"state":"on"}]}
+{"dir":"packages/client/ui-brand-official","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-web-app"],"externalDeps":[],"rows":[{"profile":"web","id":"ui-brand-official","entry":"@deepseek-ai/dsh-client-ui-brand-official","parent":null,"state":"on"}]}

@@ -1,1 +1,1 @@
-{"dir":"packages/util/workspace-path","entries":[],"workspaceDeps":["@deepseek-ai/cordis"],"dependents":["@deepseek-ai/dsh-api-session-controller"],"externalDeps":[],"rows":[]}
+{"dir":"packages/util/workspace-path","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-api-session-controller"],"externalDeps":[],"rows":[]}

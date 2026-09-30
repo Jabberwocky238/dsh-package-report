@@ -1,1 +1,1 @@
-{"dir":"packages/typert/generator","entries":[],"workspaceDeps":["@deepseek-ai/cordis"],"dependents":[],"externalDeps":["@jridgewell/gen-mapping","typescript"],"rows":[]}
+{"dir":"packages/typert/generator","entries":[],"workspaceDeps":[],"dependents":[],"externalDeps":["@jridgewell/gen-mapping","typescript"],"rows":[]}

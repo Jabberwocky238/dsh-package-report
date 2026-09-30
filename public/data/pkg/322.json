@@ -1,1 +1,0 @@
-{"dir":"vendor/logger-console","entries":[{"entry":"@deepseek-ai/cordis-plugin-logger-console","kind":"class"}],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/cosmokit","@deepseek-ai/schemastery"],"dependents":[],"externalDeps":["supports-color"],"rows":[]}

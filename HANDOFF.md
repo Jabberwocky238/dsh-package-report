@@ -24,6 +24,8 @@
 4. 包名**写全称**（如 `@deepseek-ai/dsh-package-manifest`，不要缩写成 `package-manifest`）。
 5. 首页要**直接展示足够多的内容**（不用点开就能看到作用、依赖、链条摘要），但**不能太多导致混乱**。依赖树等深层细节放在展开里。
 6. 有这份 HANDOFF.md。
+7. 前端尽可能懒加载，每一步按钮都懒（见 §7.1）。
+8. **Cordis 不算包，依赖 Cordis 的不算**：`vendor/` 下的 Cordis 包（cordis、cosmokit、schemastery、cordis-plugin-*，历史上也叫过 `@cordisjs/*`、`cordis`、`cosmokit`、`schemastery`）不计入任何数量、列表、历史；对它们的依赖不算 DSH 依赖，也不算外部依赖，依赖链条到它们就断开。
 
 用户用中文交流，页面文案也用中文。用户的全局规则：不允许使用 plan 模式和 subagent（除非用户明确要求）；使用 sudo 前要告知（本项目用不到 sudo）；默认不要连接远程主机。
 
@@ -99,7 +101,7 @@ crontab（`crontab -l` 查看）：
 输入是一个**已经 install 并 build 过**的 DSH 仓库。插件判定会 import 构建产物，没构建的包会被归为 `unbuilt`。
 
 ### 6.1 包清单
-扫描 `packages/*/*`、`vendor/*`、`apps/*` 下的 `package.json`。`python/sdk-runtime`、`benchmarks`、`website`、`native` 不算“DSH 包”。
+扫描 `packages/*/*`、`apps/*` 下的 `package.json`。`vendor/*` 也会读取，但只用来收集 Cordis 包名（`cordisNames`），用于从依赖中剔除，本身不算包。`python/sdk-runtime`、`benchmarks`、`website`、`native` 不算“DSH 包”。
 
 ### 6.2 包类型 `kind`
 - `app`：`apps/*`。
@@ -107,13 +109,13 @@ crontab（`crontab -l` 查看）：
 - `plugin`：对 `exports` 里的每个 `.js` 入口（跳过通配符和 `./package.json`）执行 import，按 Cordis loader 的规则（`vendor/loader/src/index.ts`：`exports.default ?? exports`）取出结果。结果是 class、function 或带 `apply` 方法的对象，就算一个插件入口。至少有一个入口就是 `plugin`。
 - `library`：其余已构建的包。
 - `unbuilt`：主入口文件不存在。
-- 例外：`@deepseek-ai/schemastery` 的默认导出是函数但不是插件，在 `notPlugins` 里排除。以后发现别的误判，也加到这个集合里。
+- 以后如果发现某个包的默认导出是可调用对象、但其实不是插件，就在 collect 里加一个排除集合。之前唯一的这种情况是 schemastery，它现在属于被排除的 Cordis 包。
 - 有些入口 import 时会抛错（worker 入口、需要父进程的子进程入口等），会记在 `errors` 里，不参与判定。import 时还会有少量子进程入口往 stderr 打印东西，属正常现象。
 
 ### 6.3 依赖
 - `workspaceDeps`：`dependencies`、`optionalDependencies`、`peerDependencies` 中属于 workspace 的包。
 - `dependents`：`workspaceDeps` 的反向关系。
-- `externalDeps`：同样三类依赖中不属于 workspace 的包。
+- `externalDeps`：同样三类依赖中，既不是 DSH 包、也不是 Cordis 包的那些。
 - 依赖链条在前端算（`deps.ts` 的 `chainStats`）：对 `workspaceDeps` 做 BFS，得到传递依赖数、最深层数和一条最长路径。
 - 已删除的包在当前依赖图里查不到，就用它被新增那天记录的依赖。
 
@@ -129,7 +131,7 @@ crontab（`crontab -l` 查看）：
 | web | dsh-base + dsh-web-app（含 4 个 preset 文件） |
 
 - 合并时只处理两种操作：`insert`（递归收集所有带 `id` 和 `name` 的行，包括 group 和 preset 里嵌套的子插件，`parent` 记录上一级行 id），以及 `{id, disabled}` 补丁。
-- `disabled: true` 算禁用，`disabled: !!js ...` 算条件启用，其余算启用。`cordis:group` 这类内置名称不算包。
+- `disabled: true` 算禁用，`disabled: !!js ...` 算条件启用，其余算启用。`cordis:group` 这类内置名称不算包；指向 Cordis 包的行（如 `@deepseek-ai/cordis-plugin-timer`）会被整行去掉。
 - **这是近似结果**，不是真实启动时的插件树。上游新增了 profile 或 bundle 时，要手动更新 `profileDefs`。
 
 ### 6.5 外部依赖闭包
@@ -137,7 +139,7 @@ crontab（`crontab -l` 查看）：
 
 ### 6.6 每日历史
 - 沿 `git log --first-parent HEAD`，按北京时间（`TZ=Asia/Shanghai`）给每天取最后一个提交。
-- 每天用 `git ls-tree -r` 找出 workspace 的 `package.json`，再用 `git cat-file --batch` 批量读取（按 blob 缓存），得到当天的包集合，以及根 `package.json` 里的 `version`。
+- 每天用 `git ls-tree -r` 找出 workspace 的 `package.json`（`vendor/` 下的只记入 Cordis 名单，不算当天的包），再用 `git cat-file --batch` 批量读取（按 blob 缓存），得到当天的包集合，以及根 `package.json` 里的 `version`。
 - 和前一天比较，得出 `added`（带当天的 description、dir、workspaceDeps）和 `removed`（只有名字）。
 - 每个包的 `firstSeen` 取自这里。
 - 只读 git 对象，不需要构建，107 天约 3 秒。

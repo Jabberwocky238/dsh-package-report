@@ -1,1 +1,1 @@
-{"dir":"vendor/hmr","entries":[{"entry":"@deepseek-ai/cordis-plugin-hmr","kind":"class"}],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/cordis-plugin-timer","@deepseek-ai/cosmokit","@deepseek-ai/schemastery"],"dependents":[],"externalDeps":["@babel/code-frame","chokidar","picomatch"],"rows":[]}
+{"dir":"apps/web","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-web-app"],"externalDeps":[],"rows":[]}

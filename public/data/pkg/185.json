@@ -1,1 +1,1 @@
-{"dir":"packages/lsp/lsp","entries":[{"entry":"@deepseek-ai/dsh-lsp","kind":"class"}],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/dsh-brand","@deepseek-ai/dsh-llm"],"dependents":["@deepseek-ai/dsh-lsp-stdio","@deepseek-ai/dsh-tool-lsp"],"externalDeps":[],"rows":[]}
+{"dir":"packages/lsp/lsp","entries":[{"entry":"@deepseek-ai/dsh-lsp","kind":"class"}],"workspaceDeps":["@deepseek-ai/dsh-brand","@deepseek-ai/dsh-llm"],"dependents":["@deepseek-ai/dsh-lsp-stdio","@deepseek-ai/dsh-tool-lsp"],"externalDeps":[],"rows":[]}

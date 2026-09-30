@@ -1,1 +1,1 @@
-{"dir":"packages/util/http-proxy","entries":[],"workspaceDeps":["@deepseek-ai/cordis"],"dependents":["@deepseek-ai/dsh-subprocess","@deepseek-ai/dsh-loader-smoke","@deepseek-ai/dsh-session-snapshot","@deepseek-ai/dsh-web-fetch-http","@deepseek-ai/dsh"],"externalDeps":["undici"],"rows":[]}
+{"dir":"packages/util/http-proxy","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-subprocess","@deepseek-ai/dsh-loader-smoke","@deepseek-ai/dsh-session-snapshot","@deepseek-ai/dsh-web-fetch-http","@deepseek-ai/dsh"],"externalDeps":["undici"],"rows":[]}

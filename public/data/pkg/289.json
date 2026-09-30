@@ -1,1 +1,1 @@
-{"dir":"packages/util/code-language","entries":[],"workspaceDeps":["@deepseek-ai/cordis"],"dependents":["@deepseek-ai/dsh-tool-fs"],"externalDeps":[],"rows":[]}
+{"dir":"packages/util/code-language","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-tool-fs"],"externalDeps":[],"rows":[]}

@@ -1,1 +1,1 @@
-{"dir":"packages/client/ui-jobs","entries":[],"workspaceDeps":["@deepseek-ai/cordis"],"dependents":["@deepseek-ai/dsh-web-app"],"externalDeps":[],"rows":[{"profile":"web","id":"ui-jobs","entry":"@deepseek-ai/dsh-client-ui-jobs","parent":null,"state":"on"}]}
+{"dir":"packages/client/ui-jobs","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-web-app"],"externalDeps":[],"rows":[{"profile":"web","id":"ui-jobs","entry":"@deepseek-ai/dsh-client-ui-jobs","parent":null,"state":"on"}]}

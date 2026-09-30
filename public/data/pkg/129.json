@@ -1,1 +1,1 @@
-{"dir":"packages/experimental/schedule-bundle","entries":[],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/dsh-client-ui-schedule","@deepseek-ai/dsh-schedule","@deepseek-ai/dsh-time-context"],"dependents":["@deepseek-ai/dsh"],"externalDeps":[],"rows":[]}
+{"dir":"packages/experimental/schedule-bundle","entries":[],"workspaceDeps":["@deepseek-ai/dsh-client-ui-schedule","@deepseek-ai/dsh-schedule","@deepseek-ai/dsh-time-context"],"dependents":["@deepseek-ai/dsh"],"externalDeps":[],"rows":[]}

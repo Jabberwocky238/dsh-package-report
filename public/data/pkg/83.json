@@ -1,1 +1,1 @@
-{"dir":"packages/client/ui-user-questions","entries":[],"workspaceDeps":["@deepseek-ai/cordis"],"dependents":["@deepseek-ai/dsh-web-app"],"externalDeps":[],"rows":[{"profile":"web","id":"ui-user-questions","entry":"@deepseek-ai/dsh-client-ui-user-questions","parent":null,"state":"on"}]}
+{"dir":"packages/client/ui-user-questions","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-web-app"],"externalDeps":[],"rows":[{"profile":"web","id":"ui-user-questions","entry":"@deepseek-ai/dsh-client-ui-user-questions","parent":null,"state":"on"}]}

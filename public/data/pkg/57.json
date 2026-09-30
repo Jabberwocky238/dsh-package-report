@@ -1,1 +1,1 @@
-{"dir":"packages/client/ui-schedule","entries":[],"workspaceDeps":["@deepseek-ai/cordis"],"dependents":["@deepseek-ai/dsh-experimental-schedule-bundle"],"externalDeps":[],"rows":[]}
+{"dir":"packages/client/ui-schedule","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-experimental-schedule-bundle"],"externalDeps":[],"rows":[]}

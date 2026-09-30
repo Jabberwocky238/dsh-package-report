@@ -1,1 +1,1 @@
-{"dir":"packages/client/web","entries":[],"workspaceDeps":["@deepseek-ai/cordis"],"dependents":["@deepseek-ai/dsh-experimental-webworker-runtime","@deepseek-ai/dsh-client-test-runtime"],"externalDeps":[],"rows":[]}
+{"dir":"packages/client/web","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-experimental-webworker-runtime","@deepseek-ai/dsh-client-test-runtime"],"externalDeps":[],"rows":[]}
