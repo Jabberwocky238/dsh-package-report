@@ -31,8 +31,13 @@ const time = async (label, fn) => {
   console.log(`${label} ${Date.now() - s} ms`)
 }
 await time('scroll to package list', async () => { await p.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); await p.waitForSelector('table.packages tbody tr') })
-await time('repos: switch day', async () => { await p.locator('.day-chip').nth(1).click(); await p.waitForSelector('.repo') })
+await time('repos: switch day', async () => { await p.locator('.day-chip').nth(2).click(); await p.waitForSelector('.repo') })
 await time('repos: show 30 more', () => p.locator('section:has(.repo-list) button.more').click())
+await time('repos: category filter', () => p.locator('.facet .facet-chip').nth(1).click())
+await time('repos: topic filter', () => p.locator('.facet').nth(1).locator('.facet-chip').first().click())
+await time('repos: last 7 days', async () => { await p.locator('.day-chip').first().click(); await p.waitForSelector('.repo') })
+await time('repos: official tab', () => p.locator('.tabs button').nth(1).click())
+await p.locator('.tabs button').first().click()
 await time('history: load 10 more days', () => p.locator('section:has(.days) button.more').click())
 await time('history: dependency tree', () => p.locator('.days button.link').first().click())
 const pkgs = 'section:has(table.packages)'

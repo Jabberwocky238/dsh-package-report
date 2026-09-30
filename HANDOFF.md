@@ -27,6 +27,9 @@
 7. 前端尽可能懒加载，每一步按钮都懒（见 §7.1）。
 9. 减少主页上的描述性废话：只留数据和必要的短标签，规则说明写在本文件和 README 里，不要放到页面上。
 10. 用 gh CLI 获取当日 topic 为 `deepseek-harness` 或 `dsh` 的新仓库（见 §6.8）。
+11. 新仓库要区分**官方和社区**（owner 为 `deepseek-ai` 的算官方，仿冒官方名字的组织也算社区），按**作用**和 **topic** 分开，筛选器要多（见 §7.2 第 3 项）。
+12. **后端接口带筛选**，`/README.md` 返回**接口使用说明**（不是仓库的 README），让别人照着说明请求就能拿到干净的 JSON（见 §8.1）。
+13. 保持运行直到任务完成，及时提交、及时 push。
 8. **Cordis 不算包，依赖 Cordis 的不算**：`vendor/` 下的 Cordis 包（cordis、cosmokit、schemastery、cordis-plugin-*，历史上也叫过 `@cordisjs/*`、`cordis`、`cosmokit`、`schemastery`）不计入任何数量、列表、历史；对它们的依赖不算 DSH 依赖，也不算外部依赖，依赖链条到它们就断开。
 
 用户用中文交流，页面文案也用中文。用户的全局规则：不允许使用 plan 模式和 subagent（除非用户明确要求）；使用 sudo 前要告知（本项目用不到 sudo）；默认不要连接远程主机。
@@ -54,11 +57,13 @@ dsh-package-report/
     History.tsx         懒加载区块「每日版本与新增」（按页加载 history-N）
     Packages.tsx        懒加载区块「包列表」（每次 40 行；展开时才取 pkg/<i>.json）
     Closures.tsx        懒加载区块「外部依赖闭包」
-    Repos.tsx           懒加载区块「新仓库」（按天切换，每次 30 个）
+    Repos.tsx           懒加载区块「新仓库」（社区/官方标签页、作用/topic 分面、多种筛选，每次 30 个）
+    categories.ts       新仓库作用分类规则 CATEGORIES 和 categoryOf()，前端和 Worker 共用
     Chain.tsx           依赖链组件：ChainLine、DepTree（逐级点开才渲染）、TreeToggle、ChipList（长列表先显示 12 个）
     index.css           全部样式；颜色 token 在 :root，深色模式在 prefers-color-scheme
     main.tsx            React 入口
-  worker/index.ts       Worker 本体：只返回 404，静态资源由 assets 绑定服务
+  worker/index.ts       Worker：/api/* JSON 接口和 /README.md；其余路径交给 ASSETS（静态资源）
+  worker/API.md         /README.md 返回的接口使用说明（{{ORIGIN}} 会替换成请求的域名）
   wrangler.jsonc        Worker 配置：routes 里的 custom_domain，workers_dev 关闭
   vite.config.ts        Vite + @cloudflare/vite-plugin
 ```
@@ -177,6 +182,12 @@ bun run deploy                                # 构建并部署到 dsh-report.ap
 - 默认只刷新昨天和今天；`--since YYYY-MM-DD` 会把从那天到今天逐天回填。现有数据是从 2026-08-13（上游仓库在 GitHub 上创建的日期）开始回填的。
 - 搜索 API 限制每分钟 30 次、每个查询最多返回 1000 条。脚本每次请求后等 2.1 秒，出错时按 30 秒递增退避，最多重试 4 次。如果某天某个 topic 的结果超过 1000 条，就在文件里标记 `truncated: true`，页面上会提示“结果不全”。发布初期 8 月中旬有这种情况；要补全的话，得把一天再按小时拆开查询。
 - 每天的仓库按 star 数倒序排列；页面可以切换成按创建时间排序。
+- `official`：owner 在 `OFFICIAL_OWNERS`（目前只有 `deepseek-ai`）里的算官方，其余都算社区。deepseek-ai 下没带这两个 topic 的仓库（如 DeepEP-Ascend）不是 DSH 项目，不会被收录。已有数据里的 `official` 字段是在本地补写的，没有重新请求 GitHub。
+- 作用分类（`src/categories.ts`）：
+  - 把仓库的 topic、名称和描述合在一起转成小写，按规则顺序第一个命中的分类就是它的分类。英文关键词按整词匹配，中文关键词按子串匹配。
+  - 分类依次为：皮肤主题、人格预设、语言包、记忆知识、IM 渠道、MCP、启动器与部署、教程与解读、重写与移植、桌面与客户端、模型接入、办公与 Skill、安全权限、开发工具与市场、通用插件、其他。
+  - 按现有 1.4 万个仓库统计，「其他」约 200 个；「通用插件」最多（约 5300 个），因为很多仓库只打了 `dsh-plugin` 之类的通用 topic。
+  - 调整规则后，可以用 `node --experimental-strip-types` 跑一个小脚本，对 `public/data/repos/*.json` 统计各类数量来检查。
 - “新仓库”指**当天创建**、并且**现在**带这两个 topic 之一的仓库。先创建、后来才加 topic 的仓库，会算在它的创建日期那天；被删除或改成私有的仓库，重新回填时会消失。
 
 ## 7. 页面结构（从上到下）
@@ -202,7 +213,16 @@ bun run deploy                                # 构建并部署到 dsh-report.ap
 
 1. **标题行**：版本号、分支和提交、生成时间（北京时间）。
 2. **总览卡片**：DSH 包（不含 Cordis）、Cordis 插件包、被 profile 引用的包数、dsh CLI 外部依赖。
-3. **新仓库**：最近 10 天做成日期按钮（显示当天数量），更早的日期放在下拉框里。每天默认显示 30 个仓库卡片（仓库名链接、star、语言、北京时间的创建时刻、描述、除 deepseek-harness 和 dsh 之外的 topic），「再显示 30 个」加载更多。
+3. **新仓库**：
+   - 顶部是「社区 / 官方」标签页。官方列表来自 summary 的 `officialRepos`，汇总了所有日期的官方仓库，不需要额外请求。
+   - 社区标签页有这些筛选：
+     - 日期：「近 7 天」、最近 10 天的日期按钮、更早的日期放在下拉框里；按钮上的数字是社区仓库数。
+     - 作用：分面按钮，显示各分类的数量。
+     - topic：最常见的 24 个 topic 做成分面按钮，可以多选（要求同时满足），也可以输入文字查找 topic；点击仓库卡片上的 topic 也会加入筛选。
+     - 名称或描述搜索、编程语言、最少 star 数、排序（按 star、创建时间或最近推送）、隐藏 fork 和已归档（默认开启）。
+   - 每个分面上的数字，是在其他筛选条件都生效、只有这一项不生效时的数量。
+   - 仓库卡片显示：仓库名链接、star、作用分类、语言、创建时间、描述、topic。默认显示 30 个，「再显示 30 个」加载更多。
+   - 作用分类在前端实时计算（`src/categories.ts`），改规则不用重新拉数据。规则说明见 §6.8。
 4. **每日版本与新增**：
    - 4 张卡片：最新版本、当前包总数、近 7 天新增、近 7 天删除。
    - 包总数折线图。
@@ -226,6 +246,16 @@ bun run deploy                                # 构建并部署到 dsh-report.ap
 - 数据是 `public/data/` 下的静态 JSON，由 assets 绑定服务，没有 API。
 - 部署会有一条关于 preview URLs 的 WARNING，可以忽略。
 
+### 8.1 JSON 接口（`worker/index.ts`，说明书在 `worker/API.md`）
+
+- `wrangler.jsonc` 里的 `assets.run_worker_first: ["/api", "/api/*", "/README.md"]` 让这些路径先经过 Worker，其余路径直接返回静态资源。Worker 通过 `env.ASSETS.fetch('/data/…')` 读取数据分片，每个 isolate 只读取一次；因为资源和代码一起部署，这样缓存不会读到旧数据。
+- 接口有：`/api`、`/api/summary`、`/api/packages`、`/api/packages/{name}`（包名里的斜杠不需要转义）、`/api/profiles`、`/api/history`、`/api/repos`（最多 31 天，支持 `facets=true`）、`/api/repos/days`、`/api/categories`。参数和字段以 `worker/API.md` 为准，**改接口时必须同步改 API.md**。
+- 返回格式统一为 `{ data, meta }`，`meta` 里带 `total`、`limit`、`offset`、`generatedAt`、`source`。出错时返回 `{ error: { code, message } }`，状态码为 400、404、405 或 500。参数值不合法一律返回 400，不会被悄悄忽略。
+- 响应头带 CORS `*` 和 `Cache-Control: public, max-age=300`。加上 `pretty=1` 输出缩进格式。
+- 作用分类和依赖图直接 import 前端的 `src/categories.ts` 与 `src/graph.ts`，保证页面和接口的结果一致。
+- 修改 `wrangler.jsonc` 的绑定之后，要运行 `npx wrangler types` 重新生成 `worker-configuration.d.ts`。
+- 本地测试：`bun run build && npx vite preview --port 4789`，然后 `curl localhost:4789/api/...`。刚部署完的十几秒内，线上可能返回空内容的 404，稍等再试即可。
+
 ## 9. 已知限制和可做的下一步
 
 - 历史数据只看 `package.json`：插件、库这类分类只有当前版本有；已删除包的作用和依赖停留在它被新增那天。想要历史分类，得对每天的 commit 做构建（成本高），或者改成静态分析源码的默认导出。
@@ -233,7 +263,9 @@ bun run deploy                                # 构建并部署到 dsh-report.ap
 - profile 合并是近似结果。想要精确结果，可以在上游 clone 里真实启动一个 profile，从 Cordis loader 导出实际加载的插件树。
 - 版本号只取根 `package.json`，各包自己的版本没有展示。
 - 可以加每个包的变更历史，比如描述或依赖在哪天变过。这需要在 collect 里对每天的 manifest 做字段 diff。
-- 没有自动化测试；验证方式是 `eslint`、`tsc -b`、`build` 和截图。
+- 没有自动化测试；验证方式是 `eslint`、`tsc -b`、`build`、`scripts/perf.mjs`（会点一遍所有主要按钮，并报告页面错误）、对各接口 curl，以及截图。
+- 08-14 到 08-16 这三天的新仓库数据是在“按时间段对半拆分”功能上线之前抓的，仍标着 `truncated: true`。重新抓取可以运行 `node scripts/repos.mjs --since 2026-08-14 --until 2026-08-16`（几百次请求，约 15-20 分钟）。用户上次中断了这次重抓，重新运行前先问用户。
+- 切换日期和「近 7 天」需要下载当天的数据文件，线上约 0.9 秒。如果还嫌慢，可以在浏览器空闲时预取相邻的日期。
 
 ## 10. 改动流程
 
