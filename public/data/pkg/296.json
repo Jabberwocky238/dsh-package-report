@@ -1,0 +1,1 @@
+{"dir":"packages/util/native-command","entries":[],"workspaceDeps":["@deepseek-ai/cordis"],"dependents":["@deepseek-ai/dsh-api-session-controller","@deepseek-ai/dsh-api-settings-controller","@deepseek-ai/dsh-api-workspace-controller","@deepseek-ai/dsh-host-directory-picker-native","@deepseek-ai/dsh-host-open-in-app"],"externalDeps":[],"rows":[]}

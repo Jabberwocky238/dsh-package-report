@@ -1,0 +1,1 @@
+{"dir":"packages/ptc-runtime/ptc-runtime","entries":[{"entry":"@deepseek-ai/dsh-ptc-runtime","kind":"class"}],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/dsh-sandbox"],"dependents":["@deepseek-ai/dsh-tools","@deepseek-ai/dsh-experimental-ptc-runtime-python","@deepseek-ai/dsh-ptc-runtime-node","@deepseek-ai/dsh-workflow-ptc"],"externalDeps":[],"rows":[]}

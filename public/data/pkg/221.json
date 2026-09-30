@@ -1,0 +1,1 @@
+{"dir":"packages/session/session-title-all-prompts-llm","entries":[{"entry":"@deepseek-ai/dsh-session-title-all-prompts-llm","kind":"object"}],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/dsh-llm","@deepseek-ai/dsh-session","@deepseek-ai/dsh-session-title","@deepseek-ai/dsh-session-title-llm","@deepseek-ai/schemastery"],"dependents":[],"externalDeps":[],"rows":[]}

@@ -1,0 +1,1 @@
+{"dir":"packages/test-support/agent-loop-testkit","entries":[],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/dsh-agent","@deepseek-ai/dsh-agent-loop","@deepseek-ai/dsh-llm","@deepseek-ai/dsh-session","@deepseek-ai/dsh-session-projection","@deepseek-ai/dsh-system-prompt","@deepseek-ai/dsh-tools"],"dependents":[],"externalDeps":[],"rows":[]}

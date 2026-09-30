@@ -23,14 +23,14 @@ DeepSeek Harness（[deepseek-ai/deepseek-harness](https://github.com/deepseek-ai
 
 ```sh
 # deepseek-harness 需要先 install + build：插件判定会 import 构建产物
-node scripts/collect.mjs <path-to-deepseek-harness>   # 写入 src/data/report.json
+node scripts/collect.mjs <path-to-deepseek-harness>   # 写入 public/data/ 下的分片 JSON
 bun run dev                                           # 本地预览
 bun run deploy                                        # 构建并部署到 Cloudflare Workers
 ```
 
 ## 每日更新
 
-`scripts/daily.sh` 会依次执行：把 `~/coding/dsh-report-src`（upstream 的独立 clone，可用 `DSH_SRC` 覆盖）更新到 `origin/master`、`pnpm install` 和 `pnpm run build`、采集数据、部署，并在数据有变化时提交 `src/data/report.json` 推到本仓库的 `main`。本机 crontab 每天运行一次：
+`scripts/daily.sh` 会依次执行：把 `~/coding/dsh-report-src`（upstream 的独立 clone，可用 `DSH_SRC` 覆盖）更新到 `origin/master`、`pnpm install` 和 `pnpm run build`、采集数据、部署，并在数据有变化时提交 `public/data/` 推到本仓库的 `main`。本机 crontab 每天运行一次：
 
 ```cron
 30 6 * * * /home/zq/coding/deepseek-harness/dsh-package-report/scripts/daily.sh >> $HOME/.cache/dsh-report-daily.log 2>&1

@@ -1,0 +1,1 @@
+{"dir":"packages/shell/pwsh-local","entries":[{"entry":"@deepseek-ai/dsh-pwsh-local","kind":"class"}],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/dsh-shell","@deepseek-ai/dsh-subprocess","@deepseek-ai/dsh-timeout","@deepseek-ai/schemastery"],"dependents":["@deepseek-ai/dsh-pwsh-sandbox","@deepseek-ai/dsh-terminal-bash","@deepseek-ai/dsh"],"externalDeps":[],"rows":[]}

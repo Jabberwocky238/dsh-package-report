@@ -1,0 +1,1 @@
+{"dir":"packages/sdk/client","entries":[],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/dsh","@deepseek-ai/dsh-llm","@deepseek-ai/dsh-sdk-protocol","@deepseek-ai/dsh-session"],"dependents":["@deepseek-ai/dsh-subagent-dsh-sdk"],"externalDeps":[],"rows":[]}

@@ -1,0 +1,1 @@
+{"dir":"packages/context/file-reference","entries":[{"entry":"@deepseek-ai/dsh-file-reference","kind":"class"}],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/dsh-agent"],"dependents":["@deepseek-ai/dsh-api-session-controller","@deepseek-ai/dsh-web-app","@deepseek-ai/dsh-file-reference-local"],"externalDeps":[],"rows":[]}

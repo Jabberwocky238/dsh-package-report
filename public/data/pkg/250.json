@@ -1,0 +1,1 @@
+{"dir":"packages/ssh/sandbox-ssh","entries":[{"entry":"@deepseek-ai/dsh-sandbox-ssh","kind":"class"}],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/dsh-sandbox","@deepseek-ai/dsh-ssh","@deepseek-ai/schemastery"],"dependents":[],"externalDeps":["zod"],"rows":[]}

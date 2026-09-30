@@ -1,0 +1,1 @@
+{"dir":"packages/subprocess/win32-process","entries":[],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/dsh-lazy-require"],"dependents":["@deepseek-ai/dsh-sandbox-windows-acl","@deepseek-ai/dsh-subprocess-local"],"externalDeps":["koffi"],"rows":[]}

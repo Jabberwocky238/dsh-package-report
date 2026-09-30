@@ -195,3 +195,10 @@ table.packages td { vertical-align: top; }
   h1 { font-size: 21px; }
   .stat-value { font-size: 24px; }
 }
+
+/* lazy loading */
+.loading { color: var(--muted); font-size: 13px; padding: 12px 0; }
+.stale { opacity: 0.6; transition: opacity 0.15s; }
+.tree-wrap { flex-basis: 100%; margin-top: 4px; }
+.tree-wrap > .tree { padding-left: 0; }
+.day { content-visibility: auto; contain-intrinsic-size: auto 260px; }

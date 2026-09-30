@@ -1,0 +1,1 @@
+{"dir":"packages/host/directory-picker-browse","entries":[{"entry":"@deepseek-ai/dsh-host-directory-picker-browse","kind":"class"}],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/dsh-host-directory-picker","@deepseek-ai/schemastery"],"dependents":["@deepseek-ai/dsh-web-app","@deepseek-ai/dsh-host-directory-picker-auto"],"externalDeps":[],"rows":[]}

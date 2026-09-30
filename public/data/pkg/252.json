@@ -1,0 +1,1 @@
+{"dir":"packages/ssh/subprocess-ssh","entries":[{"entry":"@deepseek-ai/dsh-subprocess-ssh","kind":"class"}],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/dsh-ssh","@deepseek-ai/dsh-subprocess","@deepseek-ai/dsh-subprocess-local","@deepseek-ai/schemastery"],"dependents":[],"externalDeps":["zod"],"rows":[]}

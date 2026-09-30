@@ -1,0 +1,1 @@
+{"dir":"packages/util/chunked-list","entries":[],"workspaceDeps":["@deepseek-ai/cordis"],"dependents":["@deepseek-ai/dsh-subagent"],"externalDeps":["zod"],"rows":[]}

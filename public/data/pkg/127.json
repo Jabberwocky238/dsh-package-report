@@ -1,0 +1,1 @@
+{"dir":"packages/experimental/inspector","entries":[],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/cordis-plugin-loader","@deepseek-ai/dsh-app-boot","@deepseek-ai/dsh-brand","@deepseek-ai/dsh-client-modules","@deepseek-ai/dsh-host-webserver","@deepseek-ai/dsh-util-crypto","@deepseek-ai/schemastery"],"dependents":[],"externalDeps":["ws"],"rows":[]}

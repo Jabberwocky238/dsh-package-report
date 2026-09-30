@@ -1,0 +1,1 @@
+{"dir":"packages/session/session-telemetry","entries":[],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/dsh-agent","@deepseek-ai/dsh-session"],"dependents":["@deepseek-ai/dsh-session-telemetry-otel"],"externalDeps":[],"rows":[]}

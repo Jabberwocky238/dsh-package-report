@@ -1,0 +1,1 @@
+{"dir":"vendor/group","entries":[{"entry":"@deepseek-ai/cordis-plugin-group","kind":"class"}],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/cordis-plugin-loader"],"dependents":["@deepseek-ai/dsh-app-boot"],"externalDeps":[],"rows":[]}

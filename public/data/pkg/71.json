@@ -1,0 +1,1 @@
+{"dir":"packages/client/ui-sidebar","entries":[],"workspaceDeps":["@deepseek-ai/cordis"],"dependents":["@deepseek-ai/dsh-web-app"],"externalDeps":[],"rows":[{"profile":"web","id":"ui-sidebar","entry":"@deepseek-ai/dsh-client-ui-sidebar","parent":null,"state":"on"}]}

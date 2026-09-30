@@ -34,14 +34,20 @@ dsh-package-report/
   HANDOFF.md            本文件
   README.md             面向读者的简介
   scripts/
-    collect.mjs         采集器：读 DSH 仓库，写 src/data/report.json（唯一的数据来源）
+    collect.mjs         采集器：读 DSH 仓库，写 public/data/ 下的分片 JSON（唯一的数据来源）
     daily.sh            每日任务：更新上游 clone → 构建 → 采集 → 部署 → 提交推送数据
+  public/data/          采集结果（已提交进 git），前端运行时按需 fetch，见 §7.1
   src/
-    data/report.json    采集结果（已提交进 git，约 650 KB，直接打包进前端）
-    types.ts            report.json 的 TypeScript 类型（改采集字段时同步改这里）
-    deps.ts             依赖图工具：makeLookup（包名 → 直接 DSH 依赖）、chainStats（BFS 统计传递数、深度、最长链，带缓存）
-    History.tsx         「每日版本与新增」区块，以及依赖链组件 ChainLine、DepChain
-    App.tsx             其余区块：总览、profile 表、分组、包列表、外部依赖闭包
+    types.ts            各分片的 TypeScript 类型（改采集字段时同步改这里）
+    data.ts             fetchShard（每个分片每次页面加载只请求一次）、useShard、useGraph
+    graph.ts            DepGraph：按下标存的依赖图，deps/kind/shard/chain（BFS 统计传递数、深度、最长链，带缓存）
+    LazySection.tsx     区块懒加载：进入视口 600px 内才加载模块并挂载；故意不用 Suspense
+    labels.ts           类型标签常量
+    App.tsx             首屏：标题、总览卡片、profile 表、分组；预取；挂载懒加载区块
+    History.tsx         懒加载区块「每日版本与新增」（按页加载 history-N）
+    Packages.tsx        懒加载区块「包列表」（每次 40 行；展开时才取 pkg/<i>.json）
+    Closures.tsx        懒加载区块「外部依赖闭包」
+    Chain.tsx           依赖链组件：ChainLine、DepTree（逐级点开才渲染）、TreeToggle、ChipList（长列表先显示 12 个）
     index.css           全部样式；颜色 token 在 :root，深色模式在 prefers-color-scheme
     main.tsx            React 入口
   worker/index.ts       Worker 本体：只返回 404，静态资源由 assets 绑定服务
@@ -80,7 +86,7 @@ crontab（`crontab -l` 查看）：
 2. 执行 `pnpm install --frozen-lockfile` 和 `pnpm run build`，约 3.5 分钟。
 3. 执行 `node scripts/collect.mjs "$SRC"`。
 4. 执行 `bun run deploy`。
-5. 如果 `src/data/report.json` 有变化，就提交（提交信息为 `data: <日期> <上游短 sha>`）并 `git push origin main`。`generatedAt` 字段每次都会变，所以基本上每天都会产生一个提交。
+5. 如果 `public/data/` 有变化，就提交（提交信息为 `data: <日期> <上游短 sha>`）并 `git push origin main`。`generatedAt` 字段每次都会变，所以基本上每天都会产生一个提交。
 
 脚本开头把 node、bun、pnpm 所在目录写死进了 PATH，因为 cron 环境没有 nvm。换了 node 版本要改这一行。脚本已在 `env -i HOME=$HOME` 的最小环境下验证过，SSH 推送也能用。
 
@@ -138,22 +144,50 @@ crontab（`crontab -l` 查看）：
 - 必须在上游 master 的 clone 上跑。在 fork 的 `jw238` 分支上跑，first-parent 链会因为 fork 合并而出现跳跃。
 - 2026-08-13 那天是 +56/-53，因为上游做了一次包改名（rescope），不是真的新增了 56 个包。
 
-### 6.7 `report.json` 字段
-以 `src/types.ts` 为准：`generatedAt`、`source{commit,branch,version}`、`packages[]`、`profiles[]{id,bundles,rows[]}`、`closures[]`、`history[]{day,commit,version,total,added[],removed[]}`（最新在前）、`lockfile`。
+### 6.7 输出分片（`public/data/`，字段以 `src/types.ts` 为准）
+
+| 文件 | 内容 | 大小量级 |
+|---|---|---|
+| `summary.json` | `version`（缓存键）、来源、总览数字、最新版本与近 7 天增删、每天 `[day,total,added数]`、profile 统计、分组统计 | 7 KB |
+| `graph.json` | `names[]`、`kinds[]`（已删除包为 null）、`deps[][]`（下标）；当前包在前，只在历史里出现的包在后 | 30 KB |
+| `packages.json` | 包列表每行需要的字段（计数，不含列表） | 100 KB |
+| `pkg/<i>.json` | 第 i 个包（graph 下标）的详情：dir、插件入口、依赖/被依赖/外部依赖列表、profile 行 | 每个 1-10 KB |
+| `history-<n>.json` | 有变化的日子按 10 天一页，带 `prevVersion`、`added[]`、`removed[]` | 每页 10-20 KB |
+| `closures.json` | 外部依赖闭包与锁文件统计 | 2 KB |
+
+采集时会先清空 `public/data/` 再全部重写。
 
 ## 7. 页面结构（从上到下）
+
+### 7.1 加载策略（用户要求“尽可能懒加载，每一步按钮都懒”）
+
+- **首屏**只加载 JS 主包（React，约 72 KB gzip）和 `summary.json`，能渲染标题、总览、profile 表、分组。
+- summary 一到，就并行预取 History 模块、`graph.json` 和 `history-0.json`；浏览器空闲时再预取 Packages 模块和 `packages.json`。预取只下载，不渲染。
+- 历史区、包列表、闭包区都用 `LazySection`，进入视口 600px 内才挂载。
+- **不要换回 `React.lazy` 加 Suspense**：React 会把每个 Suspense 的显示延后约 300 ms，实测会让历史卡片晚出现约 700 ms。
+- 懒加载的按钮：
+  - 历史「再加载 10 天」：请求下一页 `history-N`。
+  - 包列表「再显示 40 个」。
+  - 展开一行：请求 `pkg/<i>.json`。
+  - 「依赖树」：逐级点开，点开一级才渲染一级。
+  - 长依赖列表「显示全部」。
+- 搜索、过滤、排序用 `useDeferredValue`，计算期间表格半透明（`.stale`）。
+- 缓存：`summary.json` 每次都向服务器重新验证；其余分片的 URL 带 `?v=<summary.version>`，每次重新采集数据后 version 会变。
+- 性能基准（`node scripts/perf.mjs [url]`，4 倍 CPU 降速）：，首屏约 320 ms，历史卡片约 450 ms，滚动到包列表约 110 ms，各种点击 45 到 150 ms（改造前首屏约 1.8 s）。改动之后要重新测一遍，别让数字倒退。
+
+### 7.2 区块
 
 1. **标题行**：版本号、分支和提交、生成时间，以及插件判定规则的一句说明。
 2. **总览卡片**：DSH 包总数、Cordis 可加载插件包（含插件入口数）、被内置 profile 引用的包数、dsh CLI 外部依赖闭包。
 3. **每日版本与新增**：
    - 4 张卡片：最新版本、当前包总数、近 7 天新增、近 7 天删除。
    - 包总数折线图。
-   - 按天的卡片，只列有新增、删除或版本变化的日子，默认显示 10 天，底部按钮每次多显示 10 天。
+   - 按天的卡片，只列有新增、删除或版本变化的日子，默认显示 10 天，底部按钮每次再加载一页（10 天）。
    - 每个新增包直接显示：全称、类型、目录、作用（description）、直接依赖（全称）、链条摘要（传递依赖数、深度、最长链）。“依赖树”按钮展开可逐级展开的树，出现环或重复时显示 ↺。
 4. **各 profile 装载的插件**：每个 profile 的行数、启用、条件启用、禁用、涉及的包数，以及对应的条形图。点击一行可以过滤下方的包列表。
 5. **按分组**：每组的插件、库、client 数量。点击可以过滤包列表。
 6. **包列表**：
-   - 默认只显示插件，按被依赖数倒序。
+   - 默认只显示插件，按被依赖数倒序，每次显示 40 行。
    - 每行显示：全称和作用、类型和分组、首次出现日期、入口数、所在 profile（5 个都有时显示“全部”）、直接依赖数、传递依赖数、深度、被依赖数、外部依赖数。
    - 可以搜索，可以按类型、分组、profile 过滤，也可以只看未被 profile 引用的包。点列头排序。
    - 点击一行展开：插件入口、profile 行（状态和条件）、依赖、被依赖、外部依赖和依赖树。
@@ -165,7 +199,7 @@ crontab（`crontab -l` 查看）：
 
 - `wrangler.jsonc` 中配置了 `routes: [{ pattern: "dsh-report.app238.com", custom_domain: true }]` 和 `workers_dev: false`。首次部署时 wrangler 自动创建了 DNS 和证书。
 - 前端产物在 `dist/client`，由 assets 绑定服务，开启了 `not_found_handling: single-page-application`。
-- 数据直接打包进 JS（gzip 后约 145 KB），没有 API。如果数据继续变大，可以把 `report.json` 放到 `public/`，改成运行时 fetch。
+- 数据是 `public/data/` 下的静态 JSON，由 assets 绑定服务，没有 API。
 - 部署会有一条关于 preview URLs 的 WARNING，可以忽略。
 
 ## 9. 已知限制和可做的下一步

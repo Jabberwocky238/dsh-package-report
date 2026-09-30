@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Collects the DeepSeek Harness package report into src/data/report.json.
+// Collects the DeepSeek Harness package report into lazily fetched shards under public/data/.
 // Usage: node scripts/collect.mjs <path-to-deepseek-harness>
 // The harness must be installed and built (`pnpm install && pnpm run build`),
 // because plugin detection imports each package's built entry points.
@@ -10,7 +10,8 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const root = path.resolve(process.argv[2] ?? '..')
-const out = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src', 'data', 'report.json')
+const outDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public', 'data')
+const HISTORY_PAGE = 10
 const req = createRequire(path.join(root, 'package.json'))
 const yaml = req('js-yaml')
 const schema = yaml.DEFAULT_SCHEMA.extend([
@@ -248,15 +249,86 @@ for (const s of snapshots) {
 history.reverse()
 for (const p of packages) p.firstSeen = firstSeen[p.name] ?? null
 
-fs.mkdirSync(path.dirname(out), { recursive: true })
-fs.writeFileSync(out, JSON.stringify({
-  generatedAt: new Date().toISOString(),
-  source: { commit: git('rev-parse', 'HEAD'), branch: git('rev-parse', '--abbrev-ref', 'HEAD'), version: readJson(path.join(root, 'package.json')).version },
-  packages,
-  profiles,
-  closures,
-  history,
-  lockfile: { snapshots: Object.keys(lock.snapshots).length, importers: Object.keys(lock.importers).length },
-}, null, 1) + '\n')
-console.log(`wrote ${out}: ${packages.length} packages, ${packages.filter((p) => p.kind === 'plugin').length} plugins`)
+// ---- shards ------------------------------------------------------------------
+// summary.json is fetched first (no-cache); every other shard is fetched on demand with ?v=<summary.version>.
+const generatedAt = new Date().toISOString()
+const commit = git('rev-parse', 'HEAD')
+const version = `${commit.slice(0, 12)}-${Date.parse(generatedAt)}`
+const count = (xs, f) => xs.reduce((n, x) => n + (f(x) ? 1 : 0), 0)
+const plugins = packages.filter((p) => p.kind === 'plugin')
+const referenced = new Set(profiles.flatMap((p) => p.rows.map((r) => r.package)).filter(Boolean))
+const kinds = ['plugin', 'library', 'client', 'unbuilt', 'app']
+const groups = {}
+for (const p of packages) (groups[p.group] ??= Object.fromEntries(kinds.map((k) => [k, 0])))[p.kind]++
+const changed = history
+  .map((d, i) => ({ ...d, prevVersion: history[i + 1]?.version ?? null }))
+  .filter((d) => d.added.length || d.removed.length || d.version !== d.prevVersion)
+const pages = []
+for (let i = 0; i < changed.length; i += HISTORY_PAGE) pages.push(changed.slice(i, i + HISTORY_PAGE))
+const cli = closures.find((c) => c.root === 'apps/cli')
+const week = history.slice(0, 7)
+
+// Dependency graph indexed by position: current packages first, then packages known only from history.
+const graphNames = packages.map((p) => p.name)
+const graphDeps = new Map(packages.map((p) => [p.name, p.workspaceDeps]))
+for (const d of [...history].reverse()) for (const a of d.added) if (!graphDeps.has(a.name)) { graphNames.push(a.name); graphDeps.set(a.name, a.workspaceDeps) }
+const index = new Map(graphNames.map((n, i) => [n, i]))
+
+const shards = {
+  summary: {
+    version,
+    generatedAt,
+    source: { commit, branch: git('rev-parse', '--abbrev-ref', 'HEAD'), version: readJson(path.join(root, 'package.json')).version },
+    totals: {
+      packages: packages.length,
+      byGroupKind: { packages: count(packages, (p) => p.group !== 'vendor' && p.group !== 'apps'), vendor: count(packages, (p) => p.group === 'vendor'), apps: count(packages, (p) => p.group === 'apps') },
+      plugins: plugins.length,
+      entries: plugins.reduce((n, p) => n + p.entries.length, 0),
+      referenced: referenced.size,
+      unusedPlugins: count(plugins, (p) => !p.profiles.length),
+      cli: cli && { external: cli.external, externalVersions: cli.externalVersions, workspace: cli.workspace },
+    },
+    latest: { day: history[0]?.day, version: history[0]?.version, total: history[0]?.total, weekAdded: week.reduce((n, d) => n + d.added.length, 0), weekRemoved: week.reduce((n, d) => n + d.removed.length, 0) },
+    changedDays: changed.length,
+    historyPages: pages.length,
+    days: history.map((d) => [d.day, d.total, d.added.length]),
+    profiles: profiles.map((p) => ({
+      id: p.id,
+      bundles: p.bundles,
+      rows: p.rows.length,
+      on: count(p.rows, (r) => r.state === 'on'),
+      conditional: count(p.rows, (r) => r.state === 'conditional'),
+      off: count(p.rows, (r) => r.state === 'off'),
+      packages: new Set(p.rows.map((r) => r.package).filter(Boolean)).size,
+    })),
+    groups,
+  },
+  graph: {
+    names: graphNames,
+    kinds: graphNames.map((n) => byName.get(n)?.kind ?? null),
+    deps: graphNames.map((n) => graphDeps.get(n).filter((d) => index.has(d)).map((d) => index.get(d))),
+  },
+  packages: packages.map((p) => ({
+    name: p.name, group: p.group, kind: p.kind, bundle: p.bundle, description: p.description, firstSeen: p.firstSeen,
+    entries: p.entries.length, profiles: p.profiles, workspaceDeps: p.workspaceDeps.length, dependents: p.dependents.length, externalDeps: p.externalDeps.length,
+  })),
+  closures: { closures, lockfile: { snapshots: Object.keys(lock.snapshots).length, importers: Object.keys(lock.importers).length } },
+}
+// One detail shard per package, named by its graph index, fetched when that row is expanded.
+for (const p of packages) {
+  shards[`pkg/${index.get(p.name)}`] = {
+    dir: p.dir,
+    entries: p.entries,
+    workspaceDeps: p.workspaceDeps,
+    dependents: p.dependents,
+    externalDeps: p.externalDeps,
+    rows: profiles.flatMap((pr) => pr.rows.filter((r) => r.package === p.name).map(({ package: _, ...r }) => ({ profile: pr.id, ...r }))),
+  }
+}
+pages.forEach((page, i) => { shards[`history-${i}`] = page })
+
+fs.rmSync(outDir, { recursive: true, force: true })
+fs.mkdirSync(path.join(outDir, 'pkg'), { recursive: true })
+for (const [name, value] of Object.entries(shards)) fs.writeFileSync(path.join(outDir, `${name}.json`), JSON.stringify(value) + '\n')
+console.log(`wrote ${Object.keys(shards).length} shards to ${outDir}: ${packages.length} packages, ${plugins.length} plugins, ${changed.length} changed days`)
 process.exit(0)

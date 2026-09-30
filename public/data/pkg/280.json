@@ -1,0 +1,1 @@
+{"dir":"packages/test-support/session-snapshot","entries":[],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/cordis-plugin-include","@deepseek-ai/dsh-http-proxy","@deepseek-ai/dsh-llm-replay","@deepseek-ai/dsh-loader-smoke","@deepseek-ai/dsh-session","@deepseek-ai/dsh-session-format"],"dependents":[],"externalDeps":["@agentclientprotocol/sdk","js-yaml","vitest"],"rows":[]}

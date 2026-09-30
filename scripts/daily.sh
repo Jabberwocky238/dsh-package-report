@@ -13,8 +13,8 @@ git -C "$SRC" reset -q --hard origin/master
 cd "$REPORT"
 node scripts/collect.mjs "$SRC"
 bun run deploy
-if ! git diff --quiet -- src/data/report.json; then
-  git add src/data/report.json
+git add -A public/data
+if ! git diff --cached --quiet -- public/data; then
   git commit -q -m "data: $(TZ=Asia/Shanghai date +%F) $(git -C "$SRC" rev-parse --short HEAD)"
   git push -q origin main
 fi

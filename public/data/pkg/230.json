@@ -1,0 +1,1 @@
+{"dir":"packages/shell/bash-local","entries":[{"entry":"@deepseek-ai/dsh-bash-local","kind":"class"}],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/dsh-shell","@deepseek-ai/dsh-subprocess","@deepseek-ai/dsh-timeout","@deepseek-ai/schemastery"],"dependents":["@deepseek-ai/dsh-bash-sandbox"],"externalDeps":[],"rows":[]}

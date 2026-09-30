@@ -1,0 +1,1 @@
+{"dir":"packages/ssh/fs-ssh","entries":[{"entry":"@deepseek-ai/dsh-fs-ssh","kind":"class"}],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/dsh-fs","@deepseek-ai/dsh-sandbox","@deepseek-ai/dsh-sandbox-policy","@deepseek-ai/dsh-ssh","@deepseek-ai/schemastery"],"dependents":[],"externalDeps":["zod"],"rows":[]}

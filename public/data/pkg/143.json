@@ -1,0 +1,1 @@
+{"dir":"packages/fs/fs-local","entries":[{"entry":"@deepseek-ai/dsh-fs-local","kind":"class"}],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/dsh-fs","@deepseek-ai/schemastery"],"dependents":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-fs-sandbox","@deepseek-ai/dsh-ssh","@deepseek-ai/dsh"],"externalDeps":["chokidar","koffi"],"rows":[]}

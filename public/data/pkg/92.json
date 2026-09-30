@@ -1,0 +1,1 @@
+{"dir":"packages/computer-use/computer-use","entries":[{"entry":"@deepseek-ai/dsh-computer-use","kind":"class"}],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/dsh-brand"],"dependents":["@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp","@deepseek-ai/dsh-experimental-computer-use-cua-driver-native"],"externalDeps":[],"rows":[]}

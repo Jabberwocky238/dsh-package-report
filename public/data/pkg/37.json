@@ -1,0 +1,1 @@
+{"dir":"packages/client/ui-chat","entries":[],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/schemastery"],"dependents":["@deepseek-ai/dsh-web-app","@deepseek-ai/dsh-client-test-runtime"],"externalDeps":[],"rows":[{"profile":"web","id":"ui-chat","entry":"@deepseek-ai/dsh-client-ui-chat","parent":null,"state":"on"}]}

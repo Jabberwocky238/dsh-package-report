@@ -1,0 +1,1 @@
+{"dir":"packages/web/web-search-perplexity","entries":[{"entry":"@deepseek-ai/dsh-web-search-perplexity","kind":"object"}],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/dsh-launch-environment","@deepseek-ai/dsh-web","@deepseek-ai/schemastery"],"dependents":[],"externalDeps":[],"rows":[]}

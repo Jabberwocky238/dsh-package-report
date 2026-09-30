@@ -1,0 +1,1 @@
+{"dir":"packages/client/ui-settings-models","entries":[],"workspaceDeps":["@deepseek-ai/cordis","@deepseek-ai/schemastery"],"dependents":["@deepseek-ai/dsh-web-app"],"externalDeps":[],"rows":[{"profile":"web","id":"ui-settings-models","entry":"@deepseek-ai/dsh-client-ui-settings-models","parent":null,"state":"on"}]}
