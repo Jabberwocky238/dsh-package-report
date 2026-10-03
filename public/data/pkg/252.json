@@ -1,1 +1,1 @@
-{"dir":"packages/ssh/subprocess-ssh","entries":[{"entry":"@deepseek-ai/dsh-subprocess-ssh","kind":"class"}],"workspaceDeps":["@deepseek-ai/dsh-ssh","@deepseek-ai/dsh-subprocess","@deepseek-ai/dsh-subprocess-local"],"dependents":[],"externalDeps":["zod"],"rows":[]}
+{"dir":"packages/ssh/fs-ssh","entries":[{"entry":"@deepseek-ai/dsh-fs-ssh","kind":"class"}],"workspaceDeps":["@deepseek-ai/dsh-fs","@deepseek-ai/dsh-sandbox","@deepseek-ai/dsh-sandbox-policy","@deepseek-ai/dsh-ssh"],"dependents":[],"externalDeps":["zod"],"rows":[]}

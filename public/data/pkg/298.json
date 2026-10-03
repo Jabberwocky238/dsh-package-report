@@ -1,1 +1,1 @@
-{"dir":"packages/util/package-manifest","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-app-boot"],"externalDeps":[],"rows":[]}
+{"dir":"packages/util/lazy-require","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-api-terminal-controller","@deepseek-ai/dsh-attachment-local","@deepseek-ai/dsh-sandbox-windows-acl","@deepseek-ai/dsh-subprocess-local","@deepseek-ai/dsh-win32-process","@deepseek-ai/dsh-terminal-bash"],"externalDeps":[],"rows":[]}

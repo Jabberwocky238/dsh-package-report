@@ -1,1 +1,1 @@
-{"dir":"packages/sdk/client","entries":[],"workspaceDeps":["@deepseek-ai/dsh","@deepseek-ai/dsh-llm","@deepseek-ai/dsh-sdk-protocol","@deepseek-ai/dsh-session"],"dependents":["@deepseek-ai/dsh-subagent-dsh-sdk"],"externalDeps":[],"rows":[]}
+{"dir":"packages/sandbox/sandbox-windows-acl","entries":[],"workspaceDeps":["@deepseek-ai/dsh-lazy-require","@deepseek-ai/dsh-skill","@deepseek-ai/dsh-subprocess","@deepseek-ai/dsh-win32-process"],"dependents":["@deepseek-ai/dsh-sandbox-local"],"externalDeps":["koffi","yaml"],"rows":[]}

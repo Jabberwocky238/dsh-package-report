@@ -1,1 +1,1 @@
-{"dir":"packages/typert/generator","entries":[],"workspaceDeps":[],"dependents":[],"externalDeps":["@jridgewell/gen-mapping","typescript"],"rows":[]}
+{"dir":"packages/test-support/remote-mock","entries":[],"workspaceDeps":["@deepseek-ai/dsh-typert-protocol"],"dependents":["@deepseek-ai/dsh-client-test-runtime"],"externalDeps":["@vitest/spy"],"rows":[]}
