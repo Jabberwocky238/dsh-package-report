@@ -1,1 +1,1 @@
-{"dir":"packages/fs/fs-local","entries":[{"entry":"@deepseek-ai/dsh-fs-local","kind":"class"}],"workspaceDeps":["@deepseek-ai/dsh-fs"],"dependents":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-fs-sandbox","@deepseek-ai/dsh-ssh","@deepseek-ai/dsh"],"externalDeps":["chokidar","koffi"],"rows":[]}
+{"dir":"packages/experimental/terminal-bundle","entries":[],"workspaceDeps":["@deepseek-ai/dsh-terminal","@deepseek-ai/dsh-terminal-bash","@deepseek-ai/dsh-tool-terminal"],"dependents":["@deepseek-ai/dsh"],"externalDeps":[],"rows":[]}

@@ -1,1 +1,1 @@
-{"dir":"packages/util/http-proxy","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-subprocess","@deepseek-ai/dsh-loader-smoke","@deepseek-ai/dsh-session-snapshot","@deepseek-ai/dsh-web-fetch-http","@deepseek-ai/dsh"],"externalDeps":["undici"],"rows":[]}
+{"dir":"packages/test-support/loader-smoke","entries":[],"workspaceDeps":["@deepseek-ai/dsh-agent","@deepseek-ai/dsh-http-proxy","@deepseek-ai/dsh-llm","@deepseek-ai/dsh-session"],"dependents":["@deepseek-ai/dsh-session-snapshot"],"externalDeps":["execa","tsx"],"rows":[]}

@@ -1,1 +1,1 @@
-{"dir":"packages/experimental/session-inspector","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-experimental-inspector-profile"],"externalDeps":[],"rows":[]}
+{"dir":"packages/experimental/hook-protocol","entries":[],"workspaceDeps":["@deepseek-ai/dsh-session","@deepseek-ai/dsh-shell"],"dependents":["@deepseek-ai/dsh-hooks-claude-code","@deepseek-ai/dsh-hooks-codex"],"externalDeps":[],"rows":[]}

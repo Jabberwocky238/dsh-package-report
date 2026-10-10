@@ -1,1 +1,1 @@
-{"dir":"packages/web/web-search-perplexity","entries":[{"entry":"@deepseek-ai/dsh-web-search-perplexity","kind":"object"}],"workspaceDeps":["@deepseek-ai/dsh-launch-environment","@deepseek-ai/dsh-web"],"dependents":[],"externalDeps":[],"rows":[]}
+{"dir":"packages/util/http-proxy","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-ssh-helper-runtime","@deepseek-ai/dsh-subprocess","@deepseek-ai/dsh-loader-smoke","@deepseek-ai/dsh-session-snapshot","@deepseek-ai/dsh-web-fetch-http","@deepseek-ai/dsh"],"externalDeps":["undici"],"rows":[]}

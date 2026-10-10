@@ -1,1 +1,1 @@
-{"dir":"packages/subprocess/win32-process","entries":[],"workspaceDeps":["@deepseek-ai/dsh-lazy-require"],"dependents":["@deepseek-ai/dsh-sandbox-windows-acl","@deepseek-ai/dsh-subprocess-local"],"externalDeps":["koffi"],"rows":[]}
+{"dir":"packages/ssh/subprocess-ssh","entries":[{"entry":"@deepseek-ai/dsh-subprocess-ssh","kind":"class"}],"workspaceDeps":["@deepseek-ai/dsh-ssh","@deepseek-ai/dsh-subprocess","@deepseek-ai/dsh-subprocess-local"],"dependents":[],"externalDeps":["zod"],"rows":[]}
