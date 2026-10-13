@@ -48,6 +48,16 @@ async function pace() {
     }
   }
 }
+async function waitForReset() {
+  let wait = 60_000
+  try {
+    const { stdout } = await run('gh', ['api', 'rate_limit'])
+    const r = JSON.parse(stdout).resources
+    for (const k of ['core', 'graphql']) if (r[k].remaining < 10) wait = Math.max(wait, r[k].reset * 1000 - Date.now() + 5000)
+  } catch { /* rate_limit itself failed; fall back to a minute */ }
+  log(`rate limited; sleeping ${Math.round(wait / 1000)}s`)
+  await sleep(wait)
+}
 async function gh(args) {
   await pace()
   for (let attempt = 0; ; attempt++) {
@@ -57,6 +67,8 @@ async function gh(args) {
     } catch (err) {
       const msg = `${err.stderr ?? ''}${err.stdout ?? ''}`
       if (/HTTP 404|HTTP 422|Not Found|No common ancestor/.test(msg)) return { error: msg.slice(0, 300) }
+      // Primary and secondary rate limits: wait for the window to reset, however long, then retry.
+      if (/rate limit|HTTP 403|HTTP 429/i.test(msg)) { await waitForReset(); attempt = 0; continue }
       if (attempt >= 5) throw err
       await sleep(20_000 * (attempt + 1))
     }
