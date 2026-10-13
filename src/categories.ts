@@ -28,7 +28,7 @@ export type CategoryId = (typeof CATEGORIES)[number]['id'] | 'other'
 export const CATEGORY_LABEL: Record<CategoryId, string> = { ...Object.fromEntries(CATEGORIES.map((c) => [c.id, c.label])), other: '其他' } as Record<CategoryId, string>
 export const CATEGORY_IDS: CategoryId[] = [...CATEGORIES.map((c) => c.id), 'other']
 
-const cache = new WeakMap<Repo, CategoryId>()
+const cache = new WeakMap<object, CategoryId>()
 const escape = (k: string) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 // ASCII keywords match whole words (so `cli` does not match `client`); CJK keywords match as substrings.
 const matchers = CATEGORIES.map((cat) => {
@@ -38,8 +38,8 @@ const matchers = CATEGORIES.map((cat) => {
   return { id: cat.id, test: (text: string) => (re?.test(text) ?? false) || cjk.some((k) => text.includes(k)) }
 })
 
-/** @returns the purpose category of `r`. */
-export function categoryOf(r: Repo): CategoryId {
+/** @returns the purpose category of `r` (a repository, or anything shaped like one, such as a fork package). */
+export function categoryOf(r: Pick<Repo, 'topics' | 'name' | 'description'>): CategoryId {
   let c = cache.get(r)
   if (!c) {
     const text = `${r.topics.join(' ')} ${r.name} ${r.description}`.toLowerCase()

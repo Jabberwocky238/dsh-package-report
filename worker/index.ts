@@ -3,7 +3,7 @@
 import apiDoc from './API.md?raw'
 import { CATEGORIES, CATEGORY_LABEL, categoryOf, type CategoryId, type Repo } from '../src/categories.ts'
 import { DepGraph } from '../src/graph.ts'
-import type { Day, ForkBranch, ForkRow, Forks, Graph, PackageDetail, PackageKind, PackageRow, RepoDay, Summary } from '../src/types.ts'
+import type { Day, ForkBranch, ForkRow, Forks, Graph, PackageDetail, PackageKind, PackageRow, RepoDay, SearchItem, Summary } from '../src/types.ts'
 
 class HttpError extends Error {
   readonly status: number
@@ -274,6 +274,77 @@ async function forkDetail(d: Data, name: string) {
   return { data: { ...row, packages, branchList: chunk[i % f.chunk] ?? [] }, meta: forksMeta(f) }
 }
 
+const SEARCH_TYPES = ['repo', 'fork-package', 'package'] as const
+const SEARCH_SORTS = ['relevance', 'stars', 'day', 'name'] as const
+const SEARCH_MAX = 200
+
+/** Opaque cursor: the next offset, bound to the query and the data version so a stale cursor is rejected. */
+const cursorKey = (params: URLSearchParams, version: string) => {
+  const p = new URLSearchParams(params)
+  for (const k of ['cursor', 'limit', 'pretty']) p.delete(k)
+  p.sort()
+  let h = 0
+  for (const ch of `${version}|${p}`) h = (Math.imul(h, 31) + ch.charCodeAt(0)) | 0
+  return (h >>> 0).toString(36)
+}
+const encodeCursor = (o: number, k: string) => btoa(JSON.stringify({ o, k })).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+function decodeCursor(c: string, k: string): number {
+  let v: { o?: unknown; k?: unknown }
+  try { v = JSON.parse(atob(c.replace(/-/g, '+').replace(/_/g, '/'))) } catch { throw new HttpError(400, 'bad_request', 'cursor is malformed') }
+  if (v.k !== k) throw new HttpError(400, 'bad_request', 'cursor does not belong to this query or the data has been refreshed; start again without cursor')
+  if (typeof v.o !== 'number' || !Number.isInteger(v.o) || v.o < 0) throw new HttpError(400, 'bad_request', 'cursor is malformed')
+  return v.o
+}
+
+async function search(d: Data, q: Query, params: URLSearchParams) {
+  const raw = q.str('q')
+  if (!raw) throw new HttpError(400, 'bad_request', 'q is required')
+  const tokens = raw.toLowerCase().split(/\s+/).filter(Boolean)
+  const types = q.someOf('type', SEARCH_TYPES)
+  const source = q.oneOf('source', ['all', 'official', 'community'] as const, 'all')
+  const categories = q.someOf('category', CATEGORY_IDS)
+  const since = q.day('since'), until = q.day('until')
+  const minStars = q.int('min_stars', 0, 0, 1e9)
+  const sort = q.oneOf('sort', SEARCH_SORTS, 'relevance')
+  // Larger pages are cut to SEARCH_MAX rather than rejected; follow nextCursor for the rest.
+  const asked = q.int('limit', 50, 1, 1e9)
+  const limit = Math.min(asked, SEARCH_MAX)
+  const [items, summary] = await Promise.all([d.shard<SearchItem[]>('search'), d.summary()])
+  const key = cursorKey(params, summary.version)
+  const cursor = q.str('cursor')
+  const offset = cursor ? decodeCursor(cursor, key) : 0
+
+  const whole = raw.toLowerCase()
+  const scored: { item: SearchItem; score: number; category: CategoryId }[] = []
+  for (const item of items) {
+    if (types.length && !types.includes(item.type)) continue
+    if (source !== 'all' && (source === 'official') !== item.official) continue
+    if (item.stars < minStars || (since && (item.day ?? '') < since) || (until && (item.day ?? '9999') > until)) continue
+    const name = item.name.toLowerCase()
+    const hay = `${name} ${item.description.toLowerCase()} ${item.topics.join(' ')}`
+    if (!tokens.every((t) => hay.includes(t))) continue
+    const category = categoryOf(item)
+    if (categories.length && !categories.includes(category)) continue
+    const base = name.split('/').at(-1) ?? name
+    let score = name === whole || base === whole ? 100 : name.includes(whole) ? 50 : 0
+    for (const t of tokens) score += (name.includes(t) ? 10 : 0) + (item.topics.includes(t) ? 5 : 0)
+    scored.push({ item, score, category })
+  }
+  const by = {
+    relevance: (a: (typeof scored)[number], b: (typeof scored)[number]) => b.score - a.score || b.item.stars - a.item.stars || a.item.name.localeCompare(b.item.name),
+    stars: (a: (typeof scored)[number], b: (typeof scored)[number]) => b.item.stars - a.item.stars || a.item.name.localeCompare(b.item.name),
+    day: (a: (typeof scored)[number], b: (typeof scored)[number]) => (b.item.day ?? '').localeCompare(a.item.day ?? '') || b.item.stars - a.item.stars,
+    name: (a: (typeof scored)[number], b: (typeof scored)[number]) => a.item.name.localeCompare(b.item.name),
+  }[sort]
+  scored.sort(by)
+  const page = scored.slice(offset, offset + limit)
+  const next = offset + limit < scored.length ? encodeCursor(offset + limit, key) : null
+  return {
+    data: page.map(({ item, category }) => ({ ...item, category, categoryLabel: CATEGORY_LABEL[category] })),
+    meta: { total: scored.length, offset, limit, returned: page.length, limitCapped: asked > SEARCH_MAX, nextCursor: next, truncated: next !== null },
+  }
+}
+
 async function route(req: Request, env: Env): Promise<{ data: unknown; meta?: Record<string, unknown> }> {
   const url = new URL(req.url)
   const d = new Data(env, url.origin)
@@ -282,7 +353,7 @@ async function route(req: Request, env: Env): Promise<{ data: unknown; meta?: Re
   if (path === '/api' || path === '/api/') {
     return { data: {
       readme: `${url.origin}/README.md`,
-      endpoints: ['/api/summary', '/api/packages', '/api/packages/{name}', '/api/profiles', '/api/history', '/api/repos', '/api/repos/days', '/api/categories', '/api/forks', '/api/forks/{owner}/{repo}', '/api/forks/packages'],
+      endpoints: ['/api/summary', '/api/packages', '/api/packages/{name}', '/api/profiles', '/api/history', '/api/repos', '/api/repos/days', '/api/search', '/api/categories', '/api/forks', '/api/forks/{owner}/{repo}', '/api/forks/packages'],
     } }
   }
   if (path === '/api/summary') {
@@ -298,6 +369,7 @@ async function route(req: Request, env: Env): Promise<{ data: unknown; meta?: Re
   if (path === '/api/history') return history(d, q)
   if (path === '/api/repos/days') return { data: (await d.summary()).repoDays.map(([day, total, official]) => ({ day, total, official, community: total - official })) }
   if (path === '/api/repos') return repos(d, q)
+  if (path === '/api/search') return search(d, q, url.searchParams)
   if (path === '/api/forks') return forkList(d, q)
   if (path === '/api/forks/packages') return forkPackages(d, q)
   if (/^\/api\/forks\/[^/]+\/[^/]+$/.test(path)) return forkDetail(d, path.slice('/api/forks/'.length))

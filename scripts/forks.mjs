@@ -254,9 +254,12 @@ function report() {
       const deps = Object.keys({ ...m.dependencies, ...m.optionalDependencies, ...m.peerDependencies }).filter((n) => !isCordis(n))
       added.push(m.name)
       if (!packages.has(m.name)) {
-        packages.set(m.name, { name: m.name, description: typeof m.description === 'string' ? m.description : '', dir: path.dirname(p), upstream: known.has(m.name), dsh: !!m.dsh, dshDeps: deps.filter((x) => known.has(x)), deps: deps.filter((x) => !known.has(x)) })
+        const keywords = Array.isArray(m.keywords) ? m.keywords.filter((k) => typeof k === 'string').map((k) => k.toLowerCase()).slice(0, 20) : []
+        packages.set(m.name, { name: m.name, description: typeof m.description === 'string' ? m.description : '', dir: path.dirname(p), upstream: known.has(m.name), dsh: !!m.dsh, keywords, firstDate: date, dshDeps: deps.filter((x) => known.has(x)), deps: deps.filter((x) => !known.has(x)) })
         pkgForks.set(m.name, new Map())
       }
+      const pkg = packages.get(m.name)
+      if (date && (!pkg.firstDate || date < pkg.firstDate)) pkg.firstDate = date
       const byFork = pkgForks.get(m.name)
       for (const [fork, branch] of refs) {
         const e = byFork.get(fork) ?? { fork, branches: 0, branch, date }
@@ -288,7 +291,10 @@ function report() {
   const out = {
     generatedAt: new Date().toISOString(), upstreamHead, chunk: CHUNK,
     totals: { forks: Object.keys(forks).length, divergentBranches: rows.reduce((n, r) => n + r.branches, 0), divergentForks: rows.length, distinctHeads: heads.size, newPackages: [...packages.values()].filter((p) => !p.upstream).length },
-    packages: [...packages.values()].map((p) => ({ ...p, forks: [...pkgForks.get(p.name).values()].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '')).map((e) => ({ ...e, i: index.get(e.fork) })) }))
+    packages: [...packages.values()].map((p) => {
+      const pf = [...pkgForks.get(p.name).values()].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+      return { ...p, stars: Math.max(0, ...pf.map((e) => forks[e.fork]?.stars ?? 0)), forks: pf.map((e) => ({ ...e, i: index.get(e.fork) })) }
+    })
       .sort((a, b) => b.forks.length - a.forks.length || a.name.localeCompare(b.name)),
     forks: rows.map(({ detail: _, ...r }) => r),
   }

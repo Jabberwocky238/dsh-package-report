@@ -47,6 +47,7 @@
 | `GET /api/history` | 每日版本号与新增、删除的包 |
 | `GET /api/repos` | 新仓库（可按来源、作用、topic、语言、star 等筛选） |
 | `GET /api/repos/days` | 有新仓库数据的日期，以及每天的数量 |
+| `GET /api/search` | 按关键词搜索仓库、fork 里的包、DSH 包，每页最多 200 条，用 cursor 翻页 |
 | `GET /api/categories` | 新仓库的作用分类，以及每类的判定关键词 |
 | `GET /api/forks` | 有自己提交的 DSH fork：分支数、领先多少提交、改了哪些分组、新增了多少包 |
 | `GET /api/forks/{owner}/{repo}` | 单个 fork 的全部分歧分支和它新增的包 |
@@ -187,6 +188,35 @@ curl '{{ORIGIN}}/api/repos?from=2026-09-24&to=2026-09-30&category=mcp,channel&la
 curl '{{ORIGIN}}/api/repos?day=2026-09-28&topic=dsh-plugin,memory'
 # 只要各项计数，不要列表
 curl '{{ORIGIN}}/api/repos?from=2026-09-01&to=2026-09-30&facets=true&limit=1'
+```
+
+## GET /api/search
+
+在一个列表里搜索三类东西：topic 仓库（`repo`，全部日期）、fork 里新增的包（`fork-package`）、上游 DSH 包（`package`）。
+
+| 参数 | 说明 |
+|---|---|
+| `q` | 必填。关键词，多个词用空格分开，全部出现在名称、描述或 topic（fork 包取 `package.json` 的 keywords）里才算命中，不区分大小写 |
+| `type` | `repo`、`fork-package`、`package`，可多选 |
+| `source` | `all`（默认）、`official`、`community`；fork 包都算社区，DSH 包都算官方 |
+| `category` | 作用分类 id，可多选，见 `/api/categories` |
+| `min_stars` | star 数不少于该值（fork 包取带着它的 fork 里 star 最多的） |
+| `since` / `until` | 日期范围：仓库按创建日，fork 包和 DSH 包按首次出现的日子 |
+| `sort` | `relevance`（默认：名称完全相同、名称包含、topic 命中依次靠前，再按 star）、`stars`、`day`、`name` |
+| `limit` | 每页条数，默认 50，**最多 200**，超过按 200 截断 |
+| `cursor` | 上一页 `meta.nextCursor` 的值，原样传回即得下一页 |
+
+每一项带 `type`、`name`、`description`、`url`、`topics`、`stars`、`day`、`official`、`language`、`category`、`categoryLabel`；fork 包另有 `fork`、`branch`（链接指向的 fork 和分支）、`forks`（几个 fork 带着它），DSH 包另有 `kind`。
+
+`meta` 里有 `total`（命中总数）、`offset`、`limit`、`returned`、`limitCapped`（`limit` 是否被截到 200）、`truncated`（后面是否还有）和 `nextCursor`（没有下一页时为 `null`）。cursor 和查询参数、数据版本绑定：换了参数或数据刷新后再用旧 cursor 会返回 400，从第一页重新请求即可。
+
+```sh
+# 搜 memory，一次 200 条
+curl '{{ORIGIN}}/api/search?q=memory&limit=200'
+# 下一页
+curl '{{ORIGIN}}/api/search?q=memory&limit=200&cursor=<meta.nextCursor>'
+# 只搜社区里的皮肤类仓库和 fork 包，按 star 排
+curl '{{ORIGIN}}/api/search?q=skin&type=repo,fork-package&category=skin&sort=stars'
 ```
 
 ## GET /api/repos/days

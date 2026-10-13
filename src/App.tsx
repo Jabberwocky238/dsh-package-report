@@ -4,6 +4,7 @@ import { KIND_LABEL, KINDS } from './labels.ts'
 import { LazySection, Loading } from './LazySection.tsx'
 import type { Summary } from './types.ts'
 
+const loadSearch = () => import('./Search.tsx')
 const loadRepos = () => import('./Repos.tsx')
 const loadForks = () => import('./Forks.tsx')
 const loadHistory = () => import('./History.tsx')
@@ -122,6 +123,7 @@ export default function App() {
         </p>
       </header>
       <Overview s={s} />
+      <LazySection title="搜索" minHeight={120} load={loadSearch} props={{}} />
       <LazySection title="新仓库" minHeight={900} load={loadRepos} props={{ summary: s }} />
       {s.forks && <LazySection title="fork 里的扩展" minHeight={900} load={loadForks} props={{ summary: s }} />}
       <LazySection title="每日版本与新增" minHeight={1200} load={loadHistory} props={{ summary: s }} />

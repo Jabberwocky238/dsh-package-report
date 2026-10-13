@@ -239,3 +239,9 @@ a.topic { text-decoration: none; }
 .branch-list li { padding: 6px 0; border-top: 1px dashed var(--border); }
 .branch-list li:first-child { border-top: none; }
 .repo-list > .repo.wide { grid-column: 1 / -1; }
+.search-box { flex: 1 1 220px; }
+.tutorial { margin-top: 10px; font-size: 13px; }
+.tutorial summary { cursor: pointer; color: var(--accent); }
+.tutorial ol { margin: 6px 0; padding-left: 20px; }
+.tutorial li { margin: 6px 0; }
+.tutorial pre { margin: 4px 0; padding: 6px 9px; background: var(--code-bg); border-radius: 6px; overflow-x: auto; font-size: 12px; white-space: pre; }

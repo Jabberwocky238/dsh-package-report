@@ -295,9 +295,31 @@ const officialRepos = repoDays.flatMap(([day]) => readJson(path.join(reposDir, `
   .filter((r) => r.official)
   .map((r) => ({ day, name: r.name, description: r.description, stars: r.stars, language: r.language, createdAt: r.createdAt })))
 
-// public/data/forks.json is written by scripts/forks.mjs; only its totals go into the summary.
+// public/data/forks.json is written by scripts/forks.mjs; its totals and per-day counts of new packages go into the summary.
+const shanghaiDay = (iso) => new Date(Date.parse(iso) + 8 * 3600e3).toISOString().slice(0, 10)
 const forksFile = path.join(outDir, 'forks.json')
-const forks = fs.existsSync(forksFile) ? (({ generatedAt, totals }) => ({ ...totals, generatedAt }))(readJson(forksFile)) : undefined
+const forksData = fs.existsSync(forksFile) ? readJson(forksFile) : null
+const forkPackages = (forksData?.packages ?? []).filter((p) => !p.upstream && p.firstDate)
+const forks = forksData ? {
+  ...forksData.totals,
+  generatedAt: forksData.generatedAt,
+  days: Object.entries(Object.groupBy(forkPackages, (p) => shanghaiDay(p.firstDate))).map(([day, ps]) => [day, ps.length]).sort((a, b) => b[0].localeCompare(a[0])),
+} : undefined
+
+// search.json backs /api/search: every repository, fork package and DSH package in one flat list.
+const search = [
+  ...repoDays.flatMap(([day]) => readJson(path.join(reposDir, `${day}.json`)).repos.map((r) => ({
+    type: 'repo', name: r.name, description: r.description, url: `https://github.com/${r.name}`, topics: r.topics, stars: r.stars, day, official: r.official, language: r.language,
+  }))),
+  ...forkPackages.map((p) => ({
+    type: 'fork-package', name: p.name, description: p.description, url: `https://github.com/${p.forks[0].fork}/tree/${p.forks[0].branch}/${p.dir}`, topics: p.keywords, stars: p.stars,
+    day: shanghaiDay(p.firstDate), official: false, language: null, fork: p.forks[0].fork, branch: p.forks[0].branch, forks: p.forks.length,
+  })),
+  ...packages.map((p) => ({
+    type: 'package', name: p.name, description: p.description, url: `https://github.com/deepseek-ai/deepseek-harness/tree/master/${p.dir}`, topics: [], stars: 0,
+    day: p.firstSeen ?? null, official: true, language: null, kind: p.kind,
+  })),
+]
 
 const shards = {
   summary: {
@@ -342,6 +364,7 @@ const shards = {
     name: p.name, group: p.group, kind: p.kind, bundle: p.bundle, description: p.description, firstSeen: p.firstSeen,
     entries: p.entries.length, profiles: p.profiles, workspaceDeps: p.workspaceDeps.length, dependents: p.dependents.length, externalDeps: p.externalDeps.length,
   })),
+  search,
   closures: { closures, lockfile: { snapshots: Object.keys(lock.snapshots).length, importers: Object.keys(lock.importers).length } },
 }
 // One detail shard per package, named by its graph index, fetched when that row is expanded.

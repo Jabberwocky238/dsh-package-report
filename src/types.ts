@@ -37,7 +37,11 @@ export interface Summary {
   /** Every official repository (owner deepseek-ai) across all fetched days, newest first. */
   officialRepos: { day: string; name: string; description: string; stars: number; language: string | null; createdAt: string }[]
   /** Totals of forks.json (written by scripts/forks.mjs); absent until a fork scan has run. */
-  forks?: ForkTotals & { generatedAt: string }
+  forks?: ForkTotals & {
+    generatedAt: string
+    /** [Asia/Shanghai day of firstDate, count] of fork packages upstream never had, newest first. */
+    days: [string, number][]
+  }
   historyPages: number
   /** [day, total, added count], newest first. */
   days: [string, number, number][]
@@ -145,6 +149,12 @@ export interface ForkPackage {
   upstream: boolean
   /** package.json carries a `dsh` field. */
   dsh: boolean
+  /** package.json `keywords`, lowercased; they act as topics in the community list. */
+  keywords: string[]
+  /** Oldest head commit among the branches that add it: roughly when it first appeared. */
+  firstDate: string | null
+  /** Most stars among the forks that carry it. */
+  stars: number
   /** Dependencies that are DSH packages. */
   dshDeps: string[]
   /** All other dependencies. */
@@ -205,4 +215,31 @@ export interface Forks {
   packages: ForkPackage[]
   /** Forks with new packages first, then by newest commit. */
   forks: ForkRow[]
+}
+
+/** One entry of search.json, the flat index behind /api/search. */
+export interface SearchItem {
+  /** repo: a topic repository; fork-package: a package added in a fork; package: an upstream DSH package. */
+  type: 'repo' | 'fork-package' | 'package'
+  name: string
+  description: string
+  url: string
+  topics: string[]
+  stars: number
+  /** Creation day (repo), first-seen day (fork-package, package), Asia/Shanghai. */
+  day: string | null
+  official: boolean
+  language: string | null
+  /** fork-package: the fork and branch linked to, and how many forks carry it. */
+  fork?: string
+  branch?: string
+  forks?: number
+  /** package: its kind. */
+  kind?: PackageKind
+}
+
+/** /api/search response. */
+export interface SearchResponse {
+  data: (SearchItem & { category: string; categoryLabel: string })[]
+  meta: { total: number; offset: number; limit: number; returned: number; limitCapped: boolean; nextCursor: string | null; truncated: boolean }
 }
