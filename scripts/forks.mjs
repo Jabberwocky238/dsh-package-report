@@ -156,7 +156,7 @@ const cmpFile = (sha) => path.join(CACHE, 'compare', `${sha}.json`)
 async function compareOne(sha) {
   const res = await gh([`repos/${UPSTREAM}/compare/master...${sha}?per_page=100`])
   if (res.error) return { sha, error: res.error }
-  const files = (res.files ?? []).map((f) => [f.status, f.filename, f.previous_filename ?? null])
+  const files = (res.files ?? []).map((f) => [f.status, f.filename, f.previous_filename ?? null, f.sha ?? null])
   const out = {
     sha, status: res.status, ahead: res.ahead_by, behind: res.behind_by, base: res.merge_base_commit?.sha ?? null,
     files, filesCapped: files.length >= 300,
@@ -167,7 +167,7 @@ async function compareOne(sha) {
     const tree = await gh([`repos/${UPSTREAM}/git/trees/${sha}?recursive=1`])
     if (tree.tree) {
       const basePkgs = new Set(execFileSync('git', ['-C', SRC, 'ls-tree', '-r', '--name-only', out.base], { encoding: 'utf8', maxBuffer: 1 << 28 }).split('\n').filter((p) => p.endsWith('package.json')))
-      out.treeAddedPkgs = tree.tree.filter((e) => e.type === 'blob' && e.path.endsWith('package.json') && !basePkgs.has(e.path)).map((e) => e.path)
+      out.treeAddedPkgs = tree.tree.filter((e) => e.type === 'blob' && e.path.endsWith('package.json') && !basePkgs.has(e.path)).map((e) => [e.path, e.sha])
       out.treeTruncated = !!tree.truncated
     }
   }
@@ -191,25 +191,27 @@ async function compareAll() {
 
 // --- stage 3: read the manifests of added packages -----------------------------------------------------------------
 const isWorkspacePkg = (p) => p.endsWith('package.json') && !/(^|\/)(node_modules|fixtures?|__fixtures__|test|tests|examples?|templates?)\//.test(p)
-function addedPkgPaths(c) {
-  const paths = new Set(c.files.filter(([s, f]) => (s === 'added' || s === 'renamed' || s === 'copied') && isWorkspacePkg(f)).map(([, f]) => f))
-  for (const p of c.treeAddedPkgs ?? []) if (isWorkspacePkg(p)) paths.add(p)
-  return [...paths]
+/** @returns [path, blob sha] of every workspace package.json the branch adds. */
+function addedPkgs(c) {
+  const out = new Map(c.files.filter(([s, f]) => (s === 'added' || s === 'renamed' || s === 'copied') && isWorkspacePkg(f)).map(([, f, , blob]) => [f, blob]))
+  for (const [p, blob] of c.treeAddedPkgs ?? []) if (isWorkspacePkg(p)) out.set(p, blob)
+  return [...out]
 }
-const manFile = (sha, p) => path.join(CACHE, 'manifest', `${sha}-${p.replaceAll('/', '~')}`)
+// Manifests are keyed by blob sha, so identical package.json files across forks are fetched once.
+const manFile = (blob) => path.join(CACHE, 'manifest', `${blob}.json`)
 async function extractAll() {
-  const todo = []
-  for (const f of fs.readdirSync(path.join(CACHE, 'compare'))) {
-    const c = readJson(path.join(CACHE, 'compare', f))
+  const todo = new Set()
+  for (const sha of divergentHeads(readJson(forksFile, {})).keys()) {
+    const c = readJson(cmpFile(sha))
     if (!c || c.error) continue
-    for (const p of addedPkgPaths(c)) if (!fs.existsSync(manFile(c.sha, p))) todo.push([c.sha, p])
+    for (const [, blob] of addedPkgs(c)) if (blob && !fs.existsSync(manFile(blob))) todo.add(blob)
   }
-  log(`extract: ${todo.length} manifests to fetch; this batch ${Math.min(todo.length, BATCH)}`)
-  await pool(todo.slice(0, BATCH), async ([sha, p]) => {
-    const res = await gh(['-H', 'Accept: application/vnd.github.raw+json', `repos/${UPSTREAM}/contents/${p}?ref=${sha}`])
-    writeJson(manFile(sha, p), res)
+  const batch = [...todo].slice(0, BATCH)
+  log(`extract: ${todo.size} manifests to fetch; this batch ${batch.length}`)
+  await pool(batch, async (blob) => {
+    writeJson(manFile(blob), await gh(['-H', 'Accept: application/vnd.github.raw+json', `repos/${UPSTREAM}/git/blobs/${blob}`]))
   })
-  return todo.length <= BATCH
+  return todo.size <= BATCH
 }
 
 // --- report ----------------------------------------------------------------------------------------------------------
@@ -224,8 +226,8 @@ function report() {
     const c = readJson(cmpFile(sha))
     if (!c || c.error) continue
     const added = []
-    for (const p of addedPkgPaths(c)) {
-      const m = readJson(manFile(sha, p))
+    for (const [p, blob] of addedPkgs(c)) {
+      const m = blob && readJson(manFile(blob))
       if (!m || m.error || !m.name) continue
       const deps = Object.keys({ ...m.dependencies, ...m.optionalDependencies, ...m.peerDependencies })
       added.push(m.name)
