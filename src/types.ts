@@ -219,21 +219,25 @@ export interface Forks {
 
 /** One entry of search.json, the flat index behind /api/search. */
 export interface SearchItem {
-  /** repo: a topic repository; fork-package: a package added in a fork; package: an upstream DSH package. */
-  type: 'repo' | 'fork-package' | 'package'
+  /** repo: a topic repository; fork: a fork with its own commits; fork-package: a package added in a fork; package: an upstream DSH package. */
+  type: 'repo' | 'fork' | 'fork-package' | 'package'
   name: string
   description: string
   url: string
   topics: string[]
   stars: number
-  /** Creation day (repo), first-seen day (fork-package, package), Asia/Shanghai. */
+  /** Creation day (repo, fork), first-seen day (fork-package, package), Asia/Shanghai. */
   day: string | null
   official: boolean
   language: string | null
-  /** fork-package: the fork and branch linked to, and how many forks carry it. */
+  /** fork-package: the fork and branch linked to, how many forks carry it, and (up to 50 of) those forks, which also match the query. */
   fork?: string
   branch?: string
   forks?: number
+  via?: string[]
+  /** fork: divergent branches and packages it adds that upstream never had (branch is its newest branch). */
+  branches?: number
+  added?: number
   /** package: its kind. */
   kind?: PackageKind
 }

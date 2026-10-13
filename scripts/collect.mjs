@@ -306,7 +306,7 @@ const forks = forksData ? {
   days: Object.entries(Object.groupBy(forkPackages, (p) => shanghaiDay(p.firstDate))).map(([day, ps]) => [day, ps.length]).sort((a, b) => b[0].localeCompare(a[0])),
 } : undefined
 
-// search.json backs /api/search: every repository, fork package and DSH package in one flat list.
+// search.json backs /api/search: every repository, fork with its own commits, fork package and DSH package in one flat list.
 const search = [
   ...repoDays.flatMap(([day]) => readJson(path.join(reposDir, `${day}.json`)).repos.map((r) => ({
     type: 'repo', name: r.name, description: r.description, url: `https://github.com/${r.name}`, topics: r.topics, stars: r.stars, day, official: r.official, language: r.language,
@@ -314,6 +314,11 @@ const search = [
   ...forkPackages.map((p) => ({
     type: 'fork-package', name: p.name, description: p.description, url: `https://github.com/${p.forks[0].fork}/tree/${p.forks[0].branch}/${p.dir}`, topics: p.keywords, stars: p.stars,
     day: shanghaiDay(p.firstDate), official: false, language: null, fork: p.forks[0].fork, branch: p.forks[0].branch, forks: p.forks.length,
+    via: p.forks.slice(0, 50).map((f) => f.fork),
+  })),
+  ...(forksData?.forks ?? []).map((r) => ({
+    type: 'fork', name: r.fork, description: [r.description, r.message].filter(Boolean).join(' — '), url: `https://github.com/${r.fork}`, topics: r.groups, stars: r.stars,
+    day: shanghaiDay(r.createdAt), official: false, language: null, branch: r.branch, branches: r.branches, added: r.newAdded,
   })),
   ...packages.map((p) => ({
     type: 'package', name: p.name, description: p.description, url: `https://github.com/deepseek-ai/deepseek-harness/tree/master/${p.dir}`, topics: [], stars: 0,

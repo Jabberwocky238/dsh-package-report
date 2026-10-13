@@ -89,7 +89,7 @@ function Filtered({ repos, fetchedAt, truncated }: { repos: Item[]; fetchedAt?: 
   const base = useMemo(() => {
     const needle = dq.trim().toLowerCase()
     return repos.filter((r) => (origin === 'all' || (origin === 'fork') === Boolean(r.via)) && r.stars >= minStars && (!hideForks || (!r.fork && !r.archived)) && (!lang || r.language === lang)
-      && (!needle || r.name.toLowerCase().includes(needle) || r.description.toLowerCase().includes(needle)))
+      && (!needle || r.name.toLowerCase().includes(needle) || r.description.toLowerCase().includes(needle) || (r.via?.fork.toLowerCase().includes(needle) ?? false)))
   }, [repos, origin, dq, minStars, hideForks, lang])
   const byTopics = useMemo(() => (topics.size ? base.filter((r) => [...topics].every((t) => r.topics.includes(t))) : base), [base, topics])
   const catCounts = useMemo(() => new Map(tally(byTopics, categoryOf)), [byTopics])

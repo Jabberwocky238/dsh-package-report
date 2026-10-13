@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { SearchResponse } from './types.ts'
 
 const PAGE = 50
-const TYPE_LABEL = { repo: '仓库', 'fork-package': 'fork 包', package: 'DSH 包' } as const
+const TYPE_LABEL = { repo: '仓库', fork: 'fork', 'fork-package': 'fork 包', package: 'DSH 包' } as const
 type Type = '' | keyof typeof TYPE_LABEL
 
 interface Result { query: string; items: SearchResponse['data']; total: number; next: string | null }
@@ -97,7 +97,7 @@ export default function Search() {
   const shown = key && result?.query === key ? result : null
   return (
     <section>
-      <h2>搜索 <span className="muted">仓库 · fork 里的包 · DSH 包</span></h2>
+      <h2>搜索 <span className="muted">仓库 · fork · fork 里的包 · DSH 包</span></h2>
       <div className="filters">
         <input className="search-box" placeholder="关键词，空格分隔" value={q} onChange={(e) => setQ(e.target.value)} />
         <select value={type} onChange={(e) => setType(e.target.value as Type)}>
@@ -126,7 +126,8 @@ export default function Search() {
                 <div className="repo-head">
                   <a className="pkg" href={r.url} target="_blank" rel="noreferrer">{r.name}</a>
                   <span className="tag">{TYPE_LABEL[r.type]}</span>
-                  {r.type !== 'package' && <span className="tag">{r.categoryLabel}</span>}
+                  {(r.type === 'repo' || r.type === 'fork-package') && <span className="tag">{r.categoryLabel}</span>}
+                  {r.type === 'fork' && <span className="muted small-inline">{r.branches} 个分支{r.added ? ` · 新增 ${r.added} 个包` : ''}</span>}
                   {r.stars > 0 && <span className="repo-stars">★ {r.stars}</span>}
                   {r.day && <span className="muted small-inline">{r.day}</span>}
                 </div>

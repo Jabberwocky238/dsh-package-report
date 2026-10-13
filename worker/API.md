@@ -228,21 +228,21 @@ curl '{{ORIGIN}}/api/repos?from=2026-09-01&to=2026-09-30&facets=true&limit=1'
 
 ## GET /api/search
 
-在一个列表里搜索三类东西：topic 仓库（`repo`，全部日期）、fork 里新增的包（`fork-package`）、上游 DSH 包（`package`）。
+在一个列表里搜索四类东西：topic 仓库（`repo`，全部日期）、有自己提交的 fork（`fork`）、fork 里新增的包（`fork-package`）、上游 DSH 包（`package`）。按 GitHub 用户名搜，能同时找到这个人的仓库、fork 和 fork 里的包。
 
 | 参数 | 说明 |
 |---|---|
-| `q` | 必填。关键词，多个词用空格分开，全部出现在名称、描述或 topic（fork 包取 `package.json` 的 keywords）里才算命中，不区分大小写 |
-| `type` | `repo`、`fork-package`、`package`，可多选 |
+| `q` | 必填。关键词，多个词用空格分开，全部出现在名称、描述或 topic 里才算命中，不区分大小写。fork 包的 topic 取 `package.json` 的 keywords，还会匹配带着它的 fork 名；fork 的描述包含最新提交标题，topic 是改动过的分组 |
+| `type` | `repo`、`fork`、`fork-package`、`package`，可多选 |
 | `source` | `all`（默认）、`official`、`community`；fork 包都算社区，DSH 包都算官方 |
 | `category` | 作用分类 id，可多选，见 `/api/categories` |
 | `min_stars` | star 数不少于该值（fork 包取带着它的 fork 里 star 最多的） |
 | `since` / `until` | 日期范围：仓库按创建日，fork 包和 DSH 包按首次出现的日子 |
-| `sort` | `relevance`（默认：名称完全相同、名称包含、topic 命中依次靠前，再按 star）、`stars`、`day`、`name` |
+| `sort` | `relevance`（默认：名称完全相同、名称包含、来源 fork 名包含、topic 命中依次靠前，再按 star）、`stars`、`day`、`name` |
 | `limit` | 每页条数，默认 50，**最多 200**，超过按 200 截断 |
 | `cursor` | 上一页 `meta.nextCursor` 的值，原样传回即得下一页 |
 
-每一项带 `type`、`name`、`description`、`url`、`topics`、`stars`、`day`、`official`、`language`、`category`、`categoryLabel`；fork 包另有 `fork`、`branch`（链接指向的 fork 和分支）、`forks`（几个 fork 带着它），DSH 包另有 `kind`。
+每一项带 `type`、`name`、`description`、`url`、`topics`、`stars`、`day`、`official`、`language`、`category`、`categoryLabel`；fork 包另有 `fork`、`branch`（链接指向的 fork 和分支）、`forks`（几个 fork 带着它）、`via`（带着它的 fork，最多 50 个）；fork 另有 `branch`（最新的分支）、`branches`（分歧分支数）、`added`（新增的上游没有的包数）；DSH 包另有 `kind`。
 
 `meta` 里有 `total`（命中总数）、`offset`、`limit`、`returned`、`limitCapped`（`limit` 是否被截到 200）、`truncated`（后面是否还有）和 `nextCursor`（没有下一页时为 `null`）。cursor 和查询参数、数据版本绑定：换了参数或数据刷新后再用旧 cursor 会返回 400，从第一页重新请求即可。
 

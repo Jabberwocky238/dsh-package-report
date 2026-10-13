@@ -302,7 +302,7 @@ async function forkDetail(d: Data, name: string) {
   return { data: { ...row, packages, branchList: chunk[i % f.chunk] ?? [] }, meta: forksMeta(f) }
 }
 
-const SEARCH_TYPES = ['repo', 'fork-package', 'package'] as const
+const SEARCH_TYPES = ['repo', 'fork', 'fork-package', 'package'] as const
 const SEARCH_SORTS = ['relevance', 'stars', 'day', 'name'] as const
 const SEARCH_MAX = 200
 
@@ -349,12 +349,13 @@ async function search(d: Data, q: Query, params: URLSearchParams) {
     if (source !== 'all' && (source === 'official') !== item.official) continue
     if (item.stars < minStars || (since && (item.day ?? '') < since) || (until && (item.day ?? '9999') > until)) continue
     const name = item.name.toLowerCase()
-    const hay = `${name} ${item.description.toLowerCase()} ${item.topics.join(' ')}`
+    const via = item.via?.join(' ').toLowerCase() ?? ''
+    const hay = `${name} ${item.description.toLowerCase()} ${item.topics.join(' ')} ${via}`
     if (!tokens.every((t) => hay.includes(t))) continue
     const category = categoryOf(item)
     if (categories.length && !categories.includes(category)) continue
     const base = name.split('/').at(-1) ?? name
-    let score = name === whole || base === whole ? 100 : name.includes(whole) ? 50 : 0
+    let score = name === whole || base === whole ? 100 : name.includes(whole) ? 50 : via.includes(whole) ? 30 : 0
     for (const t of tokens) score += (name.includes(t) ? 10 : 0) + (item.topics.includes(t) ? 5 : 0)
     scored.push({ item, score, category })
   }
