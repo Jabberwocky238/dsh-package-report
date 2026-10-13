@@ -1,5 +1,5 @@
 // JSON API over the static data shards in public/data (served through the ASSETS binding).
-// Routes and parameters are documented in worker/API.md, which /README.md returns verbatim.
+// Routes and parameters are documented in worker/API.md, which /README.md returns verbatim (site intro first, then the API).
 import apiDoc from './API.md?raw'
 import { CATEGORIES, CATEGORY_LABEL, categoryOf, type CategoryId, type Repo } from '../src/categories.ts'
 import { DepGraph } from '../src/graph.ts'

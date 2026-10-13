@@ -30,6 +30,9 @@
 11. 新仓库要区分**官方和社区**（owner 为 `deepseek-ai` 的算官方，仿冒官方名字的组织也算社区），按**作用**和 **topic** 分开，筛选器要多（见 §7.2 第 3 项）。
 12. **后端接口带筛选**，`/README.md` 返回**接口使用说明**（不是仓库的 README），让别人照着说明请求就能拿到干净的 JSON（见 §8.1）。
 13. 保持运行直到任务完成，及时提交、及时 push。
+15. fork 里的包要**并入「新仓库 › 社区」**，和独立仓库一起按作用、topic 筛选（见 §7.2 第 3 项）。
+16. 要有**搜索接口**：按关键词直接拿列表，每页超过 200 条截断，用 cursor 翻页；页面上要有查询窗口和接口使用教程（见 §8.1）。
+17. `/README.md` 直接返回站点介绍：本站做什么、使用方法、更新频率、如何贡献、仓库位置，后面接接口说明（`worker/API.md`）。
 14. **大部分 DSH 扩展没有独立仓库，写在 fork 里**：要扫描 DSH 的全部 fork，分批进行；fork 往往有多个分支，**不能只看默认分支**（见 §6.9）。
 8. **Cordis 不算包，依赖 Cordis 的不算**：`vendor/` 下的 Cordis 包（cordis、cosmokit、schemastery、cordis-plugin-*，历史上也叫过 `@cordisjs/*`、`cordis`、`cosmokit`、`schemastery`）不计入任何数量、列表、历史；对它们的依赖不算 DSH 依赖，也不算外部依赖，依赖链条到它们就断开。
 
@@ -61,13 +64,14 @@ dsh-package-report/
     Packages.tsx        懒加载区块「包列表」（每次 40 行；展开时才取 pkg/<i>.json）
     Closures.tsx        懒加载区块「外部依赖闭包」
     Forks.tsx           懒加载区块「fork 里的扩展」（新增包 / 有改动的 fork 两个标签页；展开 fork 时才取 forks/<n>.json）
+    Search.tsx          懒加载区块「搜索」：调用 /api/search，带 cursor 加载更多和可折叠的接口使用教程
     Repos.tsx           懒加载区块「新仓库」（社区/官方标签页、作用/topic 分面、多种筛选，每次 30 个）
     categories.ts       新仓库作用分类规则 CATEGORIES 和 categoryOf()，前端和 Worker 共用
     Chain.tsx           依赖链组件：ChainLine、DepTree（逐级点开才渲染）、TreeToggle、ChipList（长列表先显示 12 个）
     index.css           全部样式；颜色 token 在 :root，深色模式在 prefers-color-scheme
     main.tsx            React 入口
   worker/index.ts       Worker：/api/* JSON 接口和 /README.md；其余路径交给 ASSETS（静态资源）
-  worker/API.md         /README.md 返回的接口使用说明（{{ORIGIN}} 会替换成请求的域名）
+  worker/API.md         /README.md 返回的内容：站点介绍、使用方法、更新频率、贡献方式、仓库位置，然后是接口说明（{{ORIGIN}} 会替换成请求的域名）
   wrangler.jsonc        Worker 配置：routes 里的 custom_domain，workers_dev 关闭
   vite.config.ts        Vite + @cloudflare/vite-plugin
 ```
@@ -246,6 +250,7 @@ bun run deploy                                # 构建并部署到 dsh-report.ap
 2. **总览卡片**：DSH 包（不含 Cordis）、Cordis 插件包、被 profile 引用的包数、dsh CLI 外部依赖。
 3. **新仓库**：
    - 顶部是「社区 / 官方」标签页。官方列表来自 summary 的 `officialRepos`，汇总了所有日期的官方仓库，不需要额外请求。
+   - 社区标签页同时列出 fork 里新增的包（`forks.json` 里 `upstream` 为 false 的项）：按 `firstDate`（带着它的分支里最早的头提交）落到北京时间某一天，日期按钮上的数字包含它们（summary 的 `forks.days`）。它们的 topic 取 `package.json` 的 keywords，star 取 fork 里最多的，链接指向最新的那个分支里的包目录，卡片上标「fork 包」和来源。顶部的「来源」分面可以只看独立仓库或只看 fork 里的包。
    - 社区标签页有这些筛选：
      - 日期：「近 7 天」、最近 10 天的日期按钮、更早的日期放在下拉框里；按钮上的数字是社区仓库数。
      - 作用：分面按钮，显示各分类的数量。
@@ -283,7 +288,8 @@ bun run deploy                                # 构建并部署到 dsh-report.ap
 ### 8.1 JSON 接口（`worker/index.ts`，说明书在 `worker/API.md`）
 
 - `wrangler.jsonc` 里的 `assets.run_worker_first: ["/api", "/api/*", "/README.md"]` 让这些路径先经过 Worker，其余路径直接返回静态资源。Worker 通过 `env.ASSETS.fetch('/data/…')` 读取数据分片，每个 isolate 只读取一次；因为资源和代码一起部署，这样缓存不会读到旧数据。
-- 接口有：`/api`、`/api/summary`、`/api/packages`、`/api/packages/{name}`（包名里的斜杠不需要转义）、`/api/profiles`、`/api/history`、`/api/repos`（最多 31 天，支持 `facets=true`）、`/api/repos/days`、`/api/categories`、`/api/forks`、`/api/forks/{owner}/{repo}`、`/api/forks/packages`。参数和字段以 `worker/API.md` 为准，**改接口时必须同步改 API.md**。
+- `/api/search` 读 `search.json`（collect 生成：全部日期的 topic 仓库、fork 里的新增包、上游 DSH 包，约几 MB，每个 isolate 只解析一次）。cursor 是 base64url 的 `{o: 偏移, k: 查询参数和 summary.version 的哈希}`，参数或数据变了就返回 400。页面顶部的「搜索」区块调用它，下面的「接口使用教程」是可折叠的（默认收起），按用户要求放在页面上。
+- 接口有：`/api`、`/api/summary`、`/api/search`、`/api/packages`、`/api/packages/{name}`（包名里的斜杠不需要转义）、`/api/profiles`、`/api/history`、`/api/repos`（最多 31 天，支持 `facets=true`）、`/api/repos/days`、`/api/categories`、`/api/forks`、`/api/forks/{owner}/{repo}`、`/api/forks/packages`。参数和字段以 `worker/API.md` 为准，**改接口时必须同步改 API.md**。
 - 返回格式统一为 `{ data, meta }`，`meta` 里带 `total`、`limit`、`offset`、`generatedAt`、`source`。出错时返回 `{ error: { code, message } }`，状态码为 400、404、405 或 500。参数值不合法一律返回 400，不会被悄悄忽略。
 - 响应头带 CORS `*` 和 `Cache-Control: public, max-age=300`。加上 `pretty=1` 输出缩进格式。
 - 作用分类和依赖图直接 import 前端的 `src/categories.ts` 与 `src/graph.ts`，保证页面和接口的结果一致。

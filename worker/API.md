@@ -1,11 +1,45 @@
-# DSH 包报告 API 使用说明
+# DSH 包报告
 
-地址：`{{ORIGIN}}`。所有接口都只支持 `GET`，返回 UTF-8 JSON，允许跨域（`Access-Control-Allow-Origin: *`），不需要鉴权。数据每小时更新一次（新仓库），每天更新一次（包、profile、历史）。
+<{{ORIGIN}}> 跟踪 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）生态，回答三个问题：上游有哪些包，社区做了哪些扩展，每天有什么变化。
 
-- 包数据来自 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的 `master` 分支。
-- 新仓库来自 GitHub 搜索：带 `deepseek-harness` 或 `dsh` topic，且按北京时间当天创建的仓库。
+## 本站做什么
+
+- **上游包**：读取 `deepseek-ai/deepseek-harness` 的 `master` 分支，列出全部 workspace 包，给出类型（Cordis 能启动的插件、库、client、app）、依赖、被依赖和依赖链条，以及每个内置 profile 装载了哪些插件。
+- **每日版本与新增**：按北京时间，记录每天的版本号、包总数、新增和删除的包，以及新增包的作用和依赖。
+- **社区扩展，来源一：独立仓库**。GitHub 上带 `deepseek-harness` 或 `dsh` topic 的仓库，分官方（owner 为 deepseek-ai）和社区两类，再按作用自动分类。
+- **社区扩展，来源二：fork 里的包**。大部分扩展没有独立仓库，直接写在 fork 里。本站扫描上游的全部 fork（含 fork 的 fork）和它们的**所有分支**，找出和上游 master 分歧的分支，以及这些分支新增的 workspace 包。
 - **Cordis 不算 DSH 包**：`vendor/` 下的 cordis、cosmokit、schemastery、cordis-plugin-* 不出现在任何结果里，对它们的依赖也不计入依赖和依赖链条。
+
+## 使用方法
+
+- **看网页**：打开 <{{ORIGIN}}>。顶部的搜索框可以一次搜遍仓库、fork 里的包和 DSH 包；下面各区块都有筛选和排序。
+- **调接口**：下文是全部 JSON 接口。最常用的是搜索，按关键词直接拿列表，每页最多 200 条，跟着 `meta.nextCursor` 翻页：
+
+  ```sh
+  curl '{{ORIGIN}}/api/search?q=memory&limit=200'
+  ```
+
+- 所有接口只支持 `GET`，返回 UTF-8 JSON，允许跨域（`Access-Control-Allow-Origin: *`），不需要鉴权。
 - 日期一律为北京时间的 `YYYY-MM-DD`，时间戳为 ISO 8601（UTC）。
+
+## 更新频率
+
+| 数据 | 频率 |
+|---|---|
+| 新仓库（topic 搜索） | 每小时，刷新昨天和今天 |
+| 上游包、profile、每日历史 | 每天一次（北京时间 06:30 拉取上游 master 并构建） |
+| fork 扫描 | 每天一次（北京时间 03:00，重新列出全部 fork 和分支，只比较新出现的提交） |
+
+每个响应的 `meta.generatedAt` 是数据生成时间，`meta.source` 是对应的上游提交；fork 接口另有 `meta.scannedAt`。
+
+## 参与贡献
+
+- 源码：<https://github.com/Jabberwocky238/dsh-package-report>（分支 `main`），数据快照也提交在仓库的 `public/data/` 里。
+- 发现分类不准、漏了扩展、接口不好用，欢迎提 issue 或 PR。维护手册见仓库里的 `HANDOFF.md`。
+- 作用分类规则在 `src/categories.ts`，调整关键词不需要重新抓数据。
+- 想让自己的扩展被收录：给独立仓库加上 `deepseek-harness` 或 `dsh` topic；写在 fork 里的包，在 `package.json` 里写好 `name`、`description` 和 `keywords`，下一次 fork 扫描就会收录。
+
+# 接口说明
 
 ## 通用约定
 
