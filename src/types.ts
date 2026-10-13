@@ -149,12 +149,35 @@ export interface ForkPackage {
   dshDeps: string[]
   /** All other dependencies. */
   deps: string[]
-  forks: { fork: string; branch: string; sha: string; date: string | null }[]
+  /** One entry per fork, newest first: how many of its branches add the package, and the newest such branch. `i` indexes Forks.forks. */
+  forks: { fork: string; i: number; branches: number; branch: string; date: string | null }[]
 }
 
-/** A fork branch that diverges from upstream master. */
-export interface ForkBranch {
+/** A fork with at least one branch that diverges from upstream master. */
+export interface ForkRow {
   fork: string
+  /** The repository it was forked from (upstream, or another fork). */
+  parent: string
+  stars: number
+  description: string
+  createdAt: string
+  /** Divergent branches. */
+  branches: number
+  /** Most commits ahead of upstream master among its branches. */
+  ahead: number
+  /** Newest branch head: its name, commit time and title. */
+  branch: string
+  date: string | null
+  message: string
+  /** Distinct packages its branches add, and how many of those upstream never had. */
+  added: number
+  newAdded: number
+  /** Package groups (packages/<group>, or top directory) its branches change. */
+  groups: string[]
+}
+
+/** One divergent branch of a fork; forks/<n>.json holds these for forks n*chunk … n*chunk+chunk-1. */
+export interface ForkBranch {
   branch: string
   default: boolean
   sha: string
@@ -170,14 +193,16 @@ export interface ForkBranch {
   added: string[]
   /** Package directories with changed files, e.g. packages/llm/llm-deepseek. */
   touched: string[]
-  stars: number
 }
 
 /** forks.json. */
 export interface Forks {
   generatedAt: string
   upstreamHead: string
+  /** Forks per forks/<n>.json detail shard. */
+  chunk: number
   totals: ForkTotals
   packages: ForkPackage[]
-  branches: ForkBranch[]
+  /** Forks with new packages first, then by newest commit. */
+  forks: ForkRow[]
 }

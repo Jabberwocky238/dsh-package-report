@@ -5,7 +5,7 @@
 // batches; rerunning picks up where it stopped and only re-checks branches whose head moved.
 // Usage: node scripts/forks.mjs [SRC] [--stage list|compare|extract|all] [--batch N]
 //   SRC  a clone of upstream master (default ~/coding/dsh-report-src); only `git rev-list origin/master` is read.
-// Output: public/data/forks.json
+// Output: public/data/forks.json (totals, added packages, one row per fork) and public/data/forks/<n>.json (branch details).
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -215,38 +215,75 @@ async function extractAll() {
 }
 
 // --- report ----------------------------------------------------------------------------------------------------------
+// Fork rows go into forks.json; their branch details are split into forks/<n>.json, CHUNK forks per file, by row index.
+const CHUNK = 50
 function report() {
   const forks = readJson(forksFile, {})
   const heads = divergentHeads(forks)
-  const known = new Set(readJson(path.join(process.env.DSH_FORKS_GRAPH ?? path.join(DATA, 'graph.json')), { names: [] }).names)
+  const graphFile = process.env.DSH_FORKS_GRAPH ?? path.join(DATA, 'graph.json')
+  const known = new Set(readJson(graphFile, { names: [] }).names)
+  // Cordis packages are not DSH dependencies (HANDOFF §2.8); drop them, including their historical names.
+  const cordis = new Set([...readJson(path.join(path.dirname(graphFile), 'summary.json'), { totals: { cordisExcluded: [] } }).totals.cordisExcluded, 'cordis', 'cosmokit', 'schemastery'])
+  const isCordis = (n) => cordis.has(n) || n.startsWith('@cordisjs/')
   const pkgDir = (f) => f.match(/^(packages\/[^/]+\/[^/]+|apps\/[^/]+|vendor\/[^/]+|plugins?\/[^/]+)\//)?.[1] ?? null
   const packages = new Map() // name -> package entry
-  const forkRows = []
+  const pkgForks = new Map() // name -> fork -> { fork, branches, branch, date }
+  const branchesByFork = new Map() // fork -> branch rows
   for (const [sha, refs] of heads) {
     const c = readJson(cmpFile(sha))
     if (!c || c.error) continue
+    const date = c.lastCommit?.date ?? null
     const added = []
     for (const [p, blob] of addedPkgs(c)) {
       const m = blob && readJson(manFile(blob))
-      if (!m || m.error || !m.name) continue
-      const deps = Object.keys({ ...m.dependencies, ...m.optionalDependencies, ...m.peerDependencies })
+      if (!m || m.error || typeof m.name !== 'string' || isCordis(m.name)) continue
+      const deps = Object.keys({ ...m.dependencies, ...m.optionalDependencies, ...m.peerDependencies }).filter((n) => !isCordis(n))
       added.push(m.name)
-      const entry = packages.get(m.name) ?? { name: m.name, description: m.description ?? '', dir: path.dirname(p), upstream: known.has(m.name), dsh: !!m.dsh, dshDeps: deps.filter((x) => known.has(x)), deps: deps.filter((x) => !known.has(x)), forks: [] }
-      for (const [fork, branch] of refs) if (!entry.forks.some((x) => x.fork === fork && x.branch === branch)) entry.forks.push({ fork, branch, sha, date: c.lastCommit?.date ?? null })
-      packages.set(m.name, entry)
+      if (!packages.has(m.name)) {
+        packages.set(m.name, { name: m.name, description: typeof m.description === 'string' ? m.description : '', dir: path.dirname(p), upstream: known.has(m.name), dsh: !!m.dsh, dshDeps: deps.filter((x) => known.has(x)), deps: deps.filter((x) => !known.has(x)) })
+        pkgForks.set(m.name, new Map())
+      }
+      const byFork = pkgForks.get(m.name)
+      for (const [fork, branch] of refs) {
+        const e = byFork.get(fork) ?? { fork, branches: 0, branch, date }
+        e.branches++
+        if ((date ?? '') > (e.date ?? '')) Object.assign(e, { branch, date })
+        byFork.set(fork, e)
+      }
     }
     const touched = [...new Set(c.files.map(([, f]) => pkgDir(f)).filter(Boolean))]
-    for (const [fork, branch] of refs) forkRows.push({ fork, branch, default: forks[fork]?.defaultBranch === branch, sha, ahead: c.ahead, behind: c.behind, files: c.files.length, capped: c.filesCapped, date: c.lastCommit?.date ?? null, message: c.lastCommit?.message ?? '', added, touched })
+    for (const [fork, branch] of refs) {
+      if (!branchesByFork.has(fork)) branchesByFork.set(fork, [])
+      branchesByFork.get(fork).push({ branch, default: forks[fork]?.defaultBranch === branch, sha, ahead: c.ahead, behind: c.behind, files: c.files.length, capped: c.filesCapped, date, message: c.lastCommit?.message ?? '', added, touched })
+    }
   }
-  const byFork = Object.fromEntries(Object.entries(forks).map(([k, f]) => [k, { stars: f.stars, pushedAt: f.pushedAt, parent: f.parent, defaultBranch: f.defaultBranch }]))
+  const groupOf = (dir) => (dir.startsWith('packages/') ? dir.split('/')[1] : dir.split('/')[0])
+  const rows = [...branchesByFork].map(([fork, branches]) => {
+    branches.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    const added = new Set(branches.flatMap((b) => b.added))
+    const f = forks[fork]
+    return {
+      fork, parent: f.parent, stars: f.stars, description: f.description ?? '', createdAt: f.createdAt,
+      branches: branches.length, ahead: Math.max(...branches.map((b) => b.ahead)), date: branches[0].date, message: branches[0].message, branch: branches[0].branch,
+      added: added.size, newAdded: [...added].filter((n) => !known.has(n)).length,
+      groups: [...new Set(branches.flatMap((b) => b.touched.map(groupOf)))].sort(),
+      detail: branches,
+    }
+  }).sort((a, b) => b.newAdded - a.newAdded || (b.date ?? '').localeCompare(a.date ?? ''))
+  const index = new Map(rows.map((r, i) => [r.fork, i]))
   const out = {
-    generatedAt: new Date().toISOString(), upstreamHead,
-    totals: { forks: Object.keys(forks).length, divergentBranches: forkRows.length, divergentForks: new Set(forkRows.map((r) => r.fork)).size, distinctHeads: heads.size, newPackages: [...packages.values()].filter((p) => !p.upstream).length },
-    packages: [...packages.values()].sort((a, b) => b.forks.length - a.forks.length || a.name.localeCompare(b.name)),
-    branches: forkRows.map((r) => ({ ...r, stars: byFork[r.fork]?.stars ?? 0 })).sort((a, b) => b.added.length - a.added.length || b.ahead - a.ahead),
+    generatedAt: new Date().toISOString(), upstreamHead, chunk: CHUNK,
+    totals: { forks: Object.keys(forks).length, divergentBranches: rows.reduce((n, r) => n + r.branches, 0), divergentForks: rows.length, distinctHeads: heads.size, newPackages: [...packages.values()].filter((p) => !p.upstream).length },
+    packages: [...packages.values()].map((p) => ({ ...p, forks: [...pkgForks.get(p.name).values()].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '')).map((e) => ({ ...e, i: index.get(e.fork) })) }))
+      .sort((a, b) => b.forks.length - a.forks.length || a.name.localeCompare(b.name)),
+    forks: rows.map(({ detail: _, ...r }) => r),
   }
+  const chunkDir = path.join(path.dirname(OUT), 'forks')
+  fs.rmSync(chunkDir, { recursive: true, force: true })
+  fs.mkdirSync(chunkDir, { recursive: true })
+  for (let n = 0; n * CHUNK < rows.length; n++) writeJson(path.join(chunkDir, `${n}.json`), rows.slice(n * CHUNK, (n + 1) * CHUNK).map((r) => r.detail))
   writeJson(OUT, out)
-  log(`report: ${out.totals.forks} forks, ${out.totals.divergentForks} divergent forks / ${out.totals.divergentBranches} branches, ${out.totals.newPackages} new packages -> ${path.relative(process.cwd(), OUT)}`)
+  log(`report: ${out.totals.forks} forks, ${out.totals.divergentForks} divergent forks / ${out.totals.divergentBranches} branches, ${out.totals.newPackages} new packages -> ${path.relative(process.cwd(), OUT)} + ${Math.ceil(rows.length / CHUNK)} chunks`)
 }
 
 if (STAGE === 'list' || STAGE === 'all') await listForks()

@@ -357,8 +357,8 @@ for (const p of packages) {
 }
 pages.forEach((page, i) => { shards[`history-${i}`] = page })
 
-// Everything under public/data except repos/ and forks.json is regenerated here.
-if (fs.existsSync(outDir)) for (const f of fs.readdirSync(outDir)) if (f !== 'repos' && f !== 'forks.json') fs.rmSync(path.join(outDir, f), { recursive: true, force: true })
+// Everything under public/data except repos/, forks/ and forks.json is regenerated here.
+if (fs.existsSync(outDir)) for (const f of fs.readdirSync(outDir)) if (f !== 'repos' && f !== 'forks' && f !== 'forks.json') fs.rmSync(path.join(outDir, f), { recursive: true, force: true })
 fs.mkdirSync(path.join(outDir, 'pkg'), { recursive: true })
 for (const [name, value] of Object.entries(shards)) fs.writeFileSync(path.join(outDir, `${name}.json`), JSON.stringify(value) + '\n')
 console.log(`wrote ${Object.keys(shards).length} shards to ${outDir}: ${packages.length} packages, ${plugins.length} plugins, ${changed.length} changed days`)

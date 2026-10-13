@@ -48,7 +48,8 @@
 | `GET /api/repos` | 新仓库（可按来源、作用、topic、语言、star 等筛选） |
 | `GET /api/repos/days` | 有新仓库数据的日期，以及每天的数量 |
 | `GET /api/categories` | 新仓库的作用分类，以及每类的判定关键词 |
-| `GET /api/forks` | DSH fork 里和上游分歧的分支：领先多少提交、改了哪些包目录、新增了哪些包 |
+| `GET /api/forks` | 有自己提交的 DSH fork：分支数、领先多少提交、改了哪些分组、新增了多少包 |
+| `GET /api/forks/{owner}/{repo}` | 单个 fork 的全部分歧分支和它新增的包 |
 | `GET /api/forks/packages` | fork 分支里新增的 workspace 包（大部分 DSH 扩展没有独立仓库，写在 fork 里） |
 
 ## GET /api/packages
@@ -200,29 +201,29 @@ curl '{{ORIGIN}}/api/repos?from=2026-09-01&to=2026-09-30&facets=true&limit=1'
 - 英文关键词按整词匹配，中文关键词按子串匹配。
 - 都没有命中的归入 `other`。
 
-## GET /api/forks 与 GET /api/forks/packages
+## fork 扫描：GET /api/forks…
 
 数据来自对 `deepseek-ai/deepseek-harness` 全部 fork（含 fork 的 fork）的扫描：
 - 每个 fork 的**所有分支**都检查，`dependabot/`、`renovate/` 开头的机器人分支除外。
 - 分支头本身就是上游 master 上的某个提交时，这个分支没有自己的改动，不收录。
 - 剩下的分支和上游 master 比较，得到领先和落后的提交数、改动的文件，以及新增的 `package.json`。`node_modules`、`test`、`fixtures`、`examples`、`templates` 下的不算。
 
-两个接口的 `meta` 里都带 `scannedAt`（扫描时间）、`upstreamHead`（比较时上游 master 的提交）和 `totals`（fork 数、分歧的 fork 和分支数、新增包数）。还没有扫描数据时返回 404。
+这几个接口的 `meta` 里都带 `scannedAt`（扫描时间）、`upstreamHead`（比较时上游 master 的提交）和 `totals`（fork 数、分歧的 fork 和分支数、新增包数）。还没有扫描数据时返回 404。
 
 ### GET /api/forks
 
-列出分歧分支，默认按最近提交时间从新到旧排列。
+每个 fork 一项，只列至少有一个分歧分支的 fork。默认先按新增包数，再按最近提交排列。
 
 | 参数 | 说明 |
 |---|---|
-| `fork` | 只看某个 fork，`owner/repo`，不区分大小写 |
-| `has_packages` | `true` 时只看新增了包的分支 |
-| `default` | `true` 时只看各 fork 的默认分支 |
-| `touches` | 改动过这些目录（全部满足），如 `packages/llm` 或 `packages/llm/llm-deepseek` |
-| `min_ahead` | 领先上游的提交数不少于该值 |
-| `since` | 最后一次提交不早于该日期 |
-| `q` | `owner/repo@branch`、最后一次提交信息或新增包名包含该文本 |
-| `sort` | `date`（默认）、`ahead`、`behind`、`files`、`added`、`stars`、`name` |
+| `has_packages` | `true` 时只看新增了上游没有的包的 fork |
+| `touches` | 改动过这些分组（全部满足）。分组是 `packages/<分组>/…` 里的那一级，其他目录取顶层目录名，如 `llm,channel` |
+| `parent` | 只看从某个仓库 fork 出来的，`owner/repo` |
+| `min_ahead` | 至少有一个分支领先上游的提交数不少于该值 |
+| `min_stars` | star 数不少于该值 |
+| `since` | 最近一次提交不早于该日期 |
+| `q` | fork 名、描述或最新提交标题包含该文本 |
+| `sort` | `added`（默认）、`date`、`ahead`、`branches`、`stars`、`name` |
 | `order` | `asc` 或 `desc`；按 name 排序时默认 `asc`，其余默认 `desc` |
 | `limit` | 默认 50，最大 500 |
 
@@ -230,19 +231,33 @@ curl '{{ORIGIN}}/api/repos?from=2026-09-01&to=2026-09-30&facets=true&limit=1'
 
 | 字段 | 说明 |
 |---|---|
-| `fork`、`branch` | fork 仓库和分支名 |
-| `default` | 是否为该 fork 的默认分支 |
+| `fork`、`parent` | fork 仓库，以及它是从哪个仓库 fork 的（上游或另一个 fork） |
+| `stars`、`description`、`createdAt` | star 数、描述、创建时间 |
+| `branches` | 分歧分支数 |
+| `ahead` | 各分支里领先上游最多的提交数 |
+| `branch`、`date`、`message` | 最新的分支、它最后一次提交的时间和标题 |
+| `added`、`newAdded` | 各分支新增的包数（去重），以及其中上游从没有过的 |
+| `groups` | 改动过的分组 |
+
+### GET /api/forks/{owner}/{repo}
+
+单个 fork 的详情：上面的字段，加上 `packages`（它新增的包，`[{ name, description, dir, upstream }]`）和 `branchList`（全部分歧分支，最新的在前）。`branchList` 每一项：
+
+| 字段 | 说明 |
+|---|---|
+| `branch`、`default` | 分支名，是否为默认分支 |
 | `sha` | 分支头提交 |
 | `ahead`、`behind` | 领先和落后上游 master 的提交数 |
 | `files`、`capped` | 改动的文件数；GitHub 最多列出 300 个，`capped` 为 `true` 时实际更多 |
 | `date`、`message` | 最后一次提交的时间和标题 |
 | `added` | 这个分支新增的包名 |
 | `touched` | 有改动的包目录，如 `packages/llm/llm-deepseek` |
-| `stars` | fork 仓库的 star 数 |
+
+不存在或没有分歧分支的 fork 返回 404。
 
 ### GET /api/forks/packages
 
-列出 fork 里新增的包，同名包合并为一项，默认按出现在多少个分支里从多到少排列。
+列出 fork 里新增的包，同名包合并为一项，默认按出现在多少个 fork 里从多到少排列。
 
 | 参数 | 说明 |
 |---|---|
@@ -251,7 +266,7 @@ curl '{{ORIGIN}}/api/repos?from=2026-09-01&to=2026-09-30&facets=true&limit=1'
 | `dir` | 目录前缀，可多选，如 `packages/llm,packages/channel` |
 | `depends_on` | 依赖这些包（全部满足），如 `@deepseek-ai/dsh-core` |
 | `fork` | 出现在某个 fork 里 |
-| `min_forks` | 至少出现在这么多个分支里 |
+| `min_forks` | 至少出现在这么多个 fork 里 |
 | `since` | 最近一次相关提交不早于该日期 |
 | `q` | 包名或描述包含该文本 |
 | `sort` | `forks`（默认）、`date`、`name` |
@@ -267,13 +282,15 @@ curl '{{ORIGIN}}/api/repos?from=2026-09-01&to=2026-09-30&facets=true&limit=1'
 | `dsh` | `package.json` 是否带 `dsh` 字段 |
 | `dshDeps` | 依赖的 DSH 包 |
 | `deps` | 其他依赖 |
-| `forks` | `[{ fork, branch, sha, date }]`，出现在哪些分支 |
+| `forks` | `[{ fork, branches, branch, date }]`，每个 fork 一项，最新的在前：有几个分支带着这个包，以及其中最新的分支 |
 
 ```sh
-# 新增包最多的分歧分支
-curl '{{ORIGIN}}/api/forks?has_packages=true&sort=added'
-# 改过 LLM 适配器、领先至少 5 个提交的分支
-curl '{{ORIGIN}}/api/forks?touches=packages/llm&min_ahead=5'
+# 新增包最多的 fork
+curl '{{ORIGIN}}/api/forks?has_packages=true'
+# 改过 LLM 适配器、领先至少 5 个提交的 fork，按最近提交排序
+curl '{{ORIGIN}}/api/forks?touches=llm&min_ahead=5&sort=date'
+# 某个 fork 的全部分支
+curl '{{ORIGIN}}/api/forks/lisihao/deepseek-solar-harness'
 # 依赖 DSH 的新增包，按最近提交排序
 curl '{{ORIGIN}}/api/forks/packages?dsh=true&sort=date'
 ```

@@ -235,3 +235,7 @@ table.packages td { vertical-align: top; }
 .topic:hover, .topic.on { background: var(--accent-bg); color: var(--accent); }
 .added-deps .chips { margin: 0; }
 a.topic { text-decoration: none; }
+.branch-list { list-style: none; margin: 6px 0 0; padding: 0 0 0 12px; border-left: 2px solid var(--border); }
+.branch-list li { padding: 6px 0; border-top: 1px dashed var(--border); }
+.branch-list li:first-child { border-top: none; }
+.repo-list > .repo.wide { grid-column: 1 / -1; }
