@@ -1,5 +1,6 @@
 // JSON API over the static data shards in public/data (served through the ASSETS binding).
 // Routes and parameters are documented in worker/API.md, which /README.md returns verbatim (site intro first, then the API).
+import { DurableObject } from 'cloudflare:workers'
 import apiDoc from './API.md?raw'
 import { CATEGORIES, CATEGORY_LABEL, categoryOf, type CategoryId, type Repo } from '../src/categories.ts'
 import { DepGraph } from '../src/graph.ts'
@@ -21,6 +22,33 @@ const HEADERS = {
   'Cache-Control': 'public, max-age=300',
 }
 const DAY = /^\d{4}-\d{2}-\d{2}$/
+const RATE_LIMIT = 600
+const RATE_PERIOD_MS = 3600_000
+
+/**
+ * Per-IP request counter, one instance per client IP, over fixed clock-hour windows. The count lives in memory:
+ * an instance is only evicted after it has been idle for a while, and a client that idle cannot get near the limit.
+ */
+export class RateLimiter extends DurableObject<Env> {
+  private start = 0
+  private count = 0
+
+  hit(): { allowed: boolean; remaining: number; reset: number } {
+    const now = Date.now()
+    const start = now - (now % RATE_PERIOD_MS)
+    if (start !== this.start) { this.start = start; this.count = 0 }
+    this.count++
+    return { allowed: this.count <= RATE_LIMIT, remaining: Math.max(0, RATE_LIMIT - this.count), reset: start + RATE_PERIOD_MS }
+  }
+}
+
+async function rateLimit(req: Request, env: Env): Promise<{ allowed: boolean; headers: Record<string, string> }> {
+  const ip = req.headers.get('CF-Connecting-IP') ?? 'unknown'
+  const r = await env.RATE_LIMITER.get(env.RATE_LIMITER.idFromName(ip)).hit()
+  const headers = { 'X-RateLimit-Limit': String(RATE_LIMIT), 'X-RateLimit-Remaining': String(r.remaining), 'X-RateLimit-Reset': String(Math.ceil(r.reset / 1000)) }
+  if (r.allowed) return { allowed: true, headers }
+  return { allowed: false, headers: { ...headers, 'Retry-After': String(Math.max(1, Math.ceil((r.reset - Date.now()) / 1000))) } }
+}
 const MAX_REPO_DAYS = 31
 
 /** Per-request view of the data: shards are fetched from ASSETS once per isolate (assets and code deploy together). */
@@ -384,19 +412,25 @@ export default {
     const url = new URL(req.url)
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: HEADERS })
     if (req.method !== 'GET' && req.method !== 'HEAD') return Response.json({ error: { code: 'method_not_allowed', message: 'only GET is supported' } }, { status: 405, headers: HEADERS })
-    if (url.pathname === '/README.md') {
-      return new Response(apiDoc.replaceAll('{{ORIGIN}}', url.origin), { headers: { ...HEADERS, 'Content-Type': 'text/markdown; charset=utf-8' } })
+    if (url.pathname !== '/README.md' && !url.pathname.startsWith('/api')) return env.ASSETS.fetch(req)
+    // Every request that reaches the Worker (the API and /README.md) counts toward the per-IP hourly limit.
+    const limit = await rateLimit(req, env)
+    if (!limit.allowed) {
+      return Response.json({ error: { code: 'rate_limited', message: `at most ${RATE_LIMIT} requests per hour per IP; retry after ${limit.headers['Retry-After']}s` } }, { status: 429, headers: { ...HEADERS, ...limit.headers } })
     }
-    if (!url.pathname.startsWith('/api')) return env.ASSETS.fetch(req)
+    const headers = { ...HEADERS, ...limit.headers }
+    if (url.pathname === '/README.md') {
+      return new Response(apiDoc.replaceAll('{{ORIGIN}}', url.origin), { headers: { ...headers, 'Content-Type': 'text/markdown; charset=utf-8' } })
+    }
     try {
       const body = await route(req, env)
       const s = await new Data(env, url.origin).summary()
       const out = { ...body, meta: { ...body.meta, generatedAt: s.generatedAt, source: s.source } }
       const pretty = url.searchParams.get('pretty')
-      return new Response(JSON.stringify(out, null, pretty && pretty !== '0' && pretty !== 'false' ? 2 : undefined), { headers: { ...HEADERS, 'Content-Type': 'application/json; charset=utf-8' } })
+      return new Response(JSON.stringify(out, null, pretty && pretty !== '0' && pretty !== 'false' ? 2 : undefined), { headers: { ...headers, 'Content-Type': 'application/json; charset=utf-8' } })
     } catch (err) {
       const e = err instanceof HttpError ? err : new HttpError(500, 'internal', err instanceof Error ? err.message : String(err))
-      return Response.json({ error: { code: e.code, message: e.message } }, { status: e.status, headers: HEADERS })
+      return Response.json({ error: { code: e.code, message: e.message } }, { status: e.status, headers })
     }
   },
 } satisfies ExportedHandler<Env>

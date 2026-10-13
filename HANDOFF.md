@@ -32,6 +32,7 @@
 13. 保持运行直到任务完成，及时提交、及时 push。
 15. fork 里的包要**并入「新仓库 › 社区」**，和独立仓库一起按作用、topic 筛选（见 §7.2 第 3 项）。
 16. 要有**搜索接口**：按关键词直接拿列表，每页超过 200 条截断，用 cursor 翻页；页面上要有查询窗口和接口使用教程（见 §8.1）。
+18. Worker 接口按 IP 限流：每小时 600 次，超过返回 429（见 §8.1）。
 17. `/README.md` 直接返回站点介绍：本站做什么、使用方法、更新频率、如何贡献、仓库位置，后面接接口说明（`worker/API.md`）。
 14. **大部分 DSH 扩展没有独立仓库，写在 fork 里**：要扫描 DSH 的全部 fork，分批进行；fork 往往有多个分支，**不能只看默认分支**（见 §6.9）。
 8. **Cordis 不算包，依赖 Cordis 的不算**：`vendor/` 下的 Cordis 包（cordis、cosmokit、schemastery、cordis-plugin-*，历史上也叫过 `@cordisjs/*`、`cordis`、`cosmokit`、`schemastery`）不计入任何数量、列表、历史；对它们的依赖不算 DSH 依赖，也不算外部依赖，依赖链条到它们就断开。
@@ -291,7 +292,8 @@ bun run deploy                                # 构建并部署到 dsh-report.ap
 - `/api/search` 读 `search.json`（collect 生成：全部日期的 topic 仓库、fork 里的新增包、上游 DSH 包，约几 MB，每个 isolate 只解析一次）。cursor 是 base64url 的 `{o: 偏移, k: 查询参数和 summary.version 的哈希}`，参数或数据变了就返回 400。页面顶部的「搜索」区块调用它，下面的「接口使用教程」是可折叠的（默认收起），按用户要求放在页面上。
 - 接口有：`/api`、`/api/summary`、`/api/search`、`/api/packages`、`/api/packages/{name}`（包名里的斜杠不需要转义）、`/api/profiles`、`/api/history`、`/api/repos`（最多 31 天，支持 `facets=true`）、`/api/repos/days`、`/api/categories`、`/api/forks`、`/api/forks/{owner}/{repo}`、`/api/forks/packages`。参数和字段以 `worker/API.md` 为准，**改接口时必须同步改 API.md**。
 - 返回格式统一为 `{ data, meta }`，`meta` 里带 `total`、`limit`、`offset`、`generatedAt`、`source`。出错时返回 `{ error: { code, message } }`，状态码为 400、404、405 或 500。参数值不合法一律返回 400，不会被悄悄忽略。
-- 响应头带 CORS `*` 和 `Cache-Control: public, max-age=300`。加上 `pretty=1` 输出缩进格式。
+- 响应头带 CORS `*` 和 `Cache-Control: public, max-age=300`。
+- **限流**（用户要求）：经过 Worker 的请求（`/api/*` 和 `/README.md`；静态资源不经过 Worker，不计数）按 `CF-Connecting-IP` 每小时最多 600 次，超过返回 429。实现是 Durable Object `RateLimiter`（`wrangler.jsonc` 的 `durable_objects` 和 `migrations` v1），每个 IP 一个实例，按整点小时窗口计数，计数只放内存不落盘：实例要空闲一段时间才会被回收，空闲这么久的客户端本来就远到不了上限。上限和窗口是 `worker/index.ts` 里的 `RATE_LIMIT`、`RATE_PERIOD_MS`。页面上的搜索框也走 `/api/search`，同样计数（输入有 300 ms 防抖）。加上 `pretty=1` 输出缩进格式。
 - 作用分类和依赖图直接 import 前端的 `src/categories.ts` 与 `src/graph.ts`，保证页面和接口的结果一致。
 - 修改 `wrangler.jsonc` 的绑定之后，要运行 `npx wrangler types` 重新生成 `worker-configuration.d.ts`。
 - 本地测试：`bun run build && npx vite preview --port 4789`，然后 `curl localhost:4789/api/...`。刚部署完的十几秒内，线上可能返回空内容的 404，稍等再试即可。

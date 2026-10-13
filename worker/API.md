@@ -19,7 +19,7 @@
   curl '{{ORIGIN}}/api/search?q=memory&limit=200'
   ```
 
-- 所有接口只支持 `GET`，返回 UTF-8 JSON，允许跨域（`Access-Control-Allow-Origin: *`），不需要鉴权。
+- 所有接口只支持 `GET`，返回 UTF-8 JSON，允许跨域（`Access-Control-Allow-Origin: *`），不需要鉴权。同一个 IP 每小时最多 600 次请求，超过返回 429（见下文「通用约定」）。
 - 日期一律为北京时间的 `YYYY-MM-DD`，时间戳为 ISO 8601（UTC）。
 
 ## 更新频率
@@ -53,7 +53,7 @@
 - `meta.total`：筛选后的总数，不受分页影响。
 - `meta.generatedAt` 和 `meta.source`：数据生成时间，以及对应的上游提交。
 
-**失败响应**：HTTP 状态码为 400、404、405 或 500。
+**失败响应**：HTTP 状态码为 400、404、405、429 或 500。
 
 ```json
 { "error": { "code": "bad_request", "message": "min_stars must be an integer in [0, 1000000000]" } }
@@ -66,6 +66,8 @@
 | `limit` | 每页条数，默认值和上限见各接口 |
 | `offset` | 跳过的条数，默认 0 |
 | `pretty` | 设为 `1` 时输出缩进格式的 JSON |
+
+**限流**：同一个 IP 每小时（按整点计）最多请求 600 次，`/README.md` 也算在内。超过后返回 HTTP 429 和 `{ "error": { "code": "rate_limited", … } }`，`Retry-After` 头给出还要等多少秒。每个响应都带 `X-RateLimit-Limit`、`X-RateLimit-Remaining` 和 `X-RateLimit-Reset`（重置时刻的 Unix 秒）。要批量取数据，请用 `limit=200` 加 cursor 少翻几页，不要逐条请求。
 
 多个值用英文逗号分隔，例如 `kind=plugin,library`。布尔参数接受 `true`/`false`、`1`/`0`、`yes`/`no`。参数值不合法时返回 400，不会被悄悄忽略。
 
