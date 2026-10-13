@@ -232,7 +232,9 @@ curl '{{ORIGIN}}/api/repos?from=2026-09-01&to=2026-09-30&facets=true&limit=1'
 
 | 参数 | 说明 |
 |---|---|
-| `q` | 必填。关键词，多个词用空格分开，全部出现在名称、描述或 topic 里才算命中，不区分大小写。fork 包的 topic 取 `package.json` 的 keywords，还会匹配带着它的 fork 名；fork 的描述包含最新提交标题，topic 是改动过的分组 |
+| `q` | 关键词，和 `topic`、`any_topic` 至少给一个。多个词用空格分开，全部出现在名称、描述或 topic 里才算命中，不区分大小写。fork 包的 topic 取 `package.json` 的 keywords，还会匹配带着它的 fork 名；fork 的描述包含最新提交标题，topic 是改动过的分组 |
+| `topic` | 必须同时带有这些 topic（精确匹配，不区分大小写，全部满足），如 `topic=dsh-tool` |
+| `any_topic` | 带有其中任意一个 topic 即可 |
 | `type` | `repo`、`fork`、`fork-package`、`package`，可多选 |
 | `source` | `all`（默认）、`official`、`community`；fork 包都算社区，DSH 包都算官方 |
 | `category` | 作用分类 id，可多选，见 `/api/categories` |
@@ -251,6 +253,8 @@ curl '{{ORIGIN}}/api/repos?from=2026-09-01&to=2026-09-30&facets=true&limit=1'
 curl '{{ORIGIN}}/api/search?q=memory&limit=200'
 # 下一页
 curl '{{ORIGIN}}/api/search?q=memory&limit=200&cursor=<meta.nextCursor>'
+# 按 topic 精确筛选，不带关键词
+curl '{{ORIGIN}}/api/search?topic=dsh-tool'
 # 只搜社区里的皮肤类仓库和 fork 包，按 star 排
 curl '{{ORIGIN}}/api/search?q=skin&type=repo,fork-package&category=skin&sort=stars'
 ```

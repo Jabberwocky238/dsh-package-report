@@ -40,7 +40,7 @@ function Tutorial() {
 curl '${origin}/api/search?q=memory&limit=200&cursor=<上一页的 meta.nextCursor>'`}</pre>
         </li>
         <li>
-          常用筛选：<code>type=repo,fork-package,package</code>、<code>source=community</code>、<code>category=skin</code>、
+          常用筛选：<code>topic=dsh-tool</code>（精确匹配 topic，可以不带 q）、<code>type=repo,fork,fork-package,package</code>、<code>source=community</code>、<code>category=skin</code>、
           <code>min_stars=5</code>、<code>since=2026-10-01</code>、<code>sort=stars</code>。数据刷新后旧 cursor 会返回 400，从第一页重新开始即可。
         </li>
         <li>

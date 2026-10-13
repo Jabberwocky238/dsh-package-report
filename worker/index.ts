@@ -325,8 +325,10 @@ function decodeCursor(c: string, k: string): number {
 }
 
 async function search(d: Data, q: Query, params: URLSearchParams) {
-  const raw = q.str('q')
-  if (!raw) throw new HttpError(400, 'bad_request', 'q is required')
+  const raw = q.str('q') ?? ''
+  const topics = q.list('topic').map((t) => t.toLowerCase())
+  const anyTopics = q.list('any_topic').map((t) => t.toLowerCase())
+  if (!raw && !topics.length && !anyTopics.length) throw new HttpError(400, 'bad_request', 'give q, topic or any_topic')
   const tokens = raw.toLowerCase().split(/\s+/).filter(Boolean)
   const types = q.someOf('type', SEARCH_TYPES)
   const source = q.oneOf('source', ['all', 'official', 'community'] as const, 'all')
@@ -348,6 +350,7 @@ async function search(d: Data, q: Query, params: URLSearchParams) {
     if (types.length && !types.includes(item.type)) continue
     if (source !== 'all' && (source === 'official') !== item.official) continue
     if (item.stars < minStars || (since && (item.day ?? '') < since) || (until && (item.day ?? '9999') > until)) continue
+    if (!topics.every((t) => item.topics.includes(t)) || (anyTopics.length && !anyTopics.some((t) => item.topics.includes(t)))) continue
     const name = item.name.toLowerCase()
     const via = item.via?.join(' ').toLowerCase() ?? ''
     const hay = `${name} ${item.description.toLowerCase()} ${item.topics.join(' ')} ${via}`
@@ -355,7 +358,7 @@ async function search(d: Data, q: Query, params: URLSearchParams) {
     const category = categoryOf(item)
     if (categories.length && !categories.includes(category)) continue
     const base = name.split('/').at(-1) ?? name
-    let score = name === whole || base === whole ? 100 : name.includes(whole) ? 50 : via.includes(whole) ? 30 : 0
+    let score = !whole ? 0 : name === whole || base === whole ? 100 : name.includes(whole) ? 50 : via.includes(whole) ? 30 : 0
     for (const t of tokens) score += (name.includes(t) ? 10 : 0) + (item.topics.includes(t) ? 5 : 0)
     scored.push({ item, score, category })
   }
