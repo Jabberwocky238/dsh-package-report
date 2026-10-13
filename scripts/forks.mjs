@@ -3,7 +3,8 @@
 // master, and finds the workspace packages those branches add — most DSH extensions live in forks, not in their own
 // repositories. Work is checkpointed under $DSH_FORKS_CACHE (default ~/.cache/dsh-forks) so it runs in resumable
 // batches; rerunning picks up where it stopped and only re-checks branches whose head moved.
-// Usage: node scripts/forks.mjs [SRC] [--stage list|compare|extract|all] [--batch N]
+// Usage: node scripts/forks.mjs [SRC] [--stage list|compare|extract|report|all] [--batch N] [--fresh]
+//   --fresh  start the fork listing over (to pick up new forks and pushes); compare results stay cached by sha.
 //   SRC  a clone of upstream master (default ~/coding/dsh-report-src); only `git rev-list origin/master` is read.
 // Output: public/data/forks.json (totals, added packages, one row per fork) and public/data/forks/<n>.json (branch details).
 import fs from 'node:fs'
@@ -17,9 +18,10 @@ const run = promisify(execFile)
 const UPSTREAM = 'deepseek-ai/deepseek-harness'
 const argv = process.argv.slice(2)
 const opt = (name, def) => { const i = argv.indexOf(`--${name}`); return i >= 0 ? argv[i + 1] : def }
-const SRC = argv.find((a, i) => !a.startsWith('--') && !argv[i - 1]?.startsWith('--')) ?? path.join(os.homedir(), 'coding', 'dsh-report-src')
+const SRC = argv.find((a, i) => !a.startsWith('--') && !['--stage', '--batch'].includes(argv[i - 1])) ?? path.join(os.homedir(), 'coding', 'dsh-report-src')
 const STAGE = opt('stage', 'all')
 const BATCH = Number(opt('batch', 500))
+const FRESH = argv.includes('--fresh')
 const CONCURRENCY = 4
 const CACHE = process.env.DSH_FORKS_CACHE ?? path.join(os.homedir(), '.cache', 'dsh-forks')
 const DATA = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public', 'data')
@@ -73,9 +75,9 @@ const forksFile = path.join(CACHE, 'forks.json')
 const listFile = path.join(CACHE, 'list-state.json')
 
 async function listForks() {
-  const forks = readJson(forksFile, {})
+  const forks = FRESH ? {} : readJson(forksFile, {})
   // Each queue item is a repository whose forks are being paged; finished items keep their place so reruns skip them.
-  const state = readJson(listFile, { queue: [{ repo: UPSTREAM, cursor: null, done: false }] })
+  const state = (!FRESH && readJson(listFile)) || { queue: [{ repo: UPSTREAM, cursor: null, done: false }] }
   let pages = 0
   for (const item of state.queue) {
     if (item.done) continue

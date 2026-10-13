@@ -30,6 +30,7 @@
 11. 新仓库要区分**官方和社区**（owner 为 `deepseek-ai` 的算官方，仿冒官方名字的组织也算社区），按**作用**和 **topic** 分开，筛选器要多（见 §7.2 第 3 项）。
 12. **后端接口带筛选**，`/README.md` 返回**接口使用说明**（不是仓库的 README），让别人照着说明请求就能拿到干净的 JSON（见 §8.1）。
 13. 保持运行直到任务完成，及时提交、及时 push。
+14. **大部分 DSH 扩展没有独立仓库，写在 fork 里**：要扫描 DSH 的全部 fork，分批进行；fork 往往有多个分支，**不能只看默认分支**（见 §6.9）。
 8. **Cordis 不算包，依赖 Cordis 的不算**：`vendor/` 下的 Cordis 包（cordis、cosmokit、schemastery、cordis-plugin-*，历史上也叫过 `@cordisjs/*`、`cordis`、`cosmokit`、`schemastery`）不计入任何数量、列表、历史；对它们的依赖不算 DSH 依赖，也不算外部依赖，依赖链条到它们就断开。
 
 用户用中文交流，页面文案也用中文。用户的全局规则：不允许使用 plan 模式和 subagent（除非用户明确要求）；使用 sudo 前要告知（本项目用不到 sudo）；默认不要连接远程主机。
@@ -43,6 +44,8 @@ dsh-package-report/
   scripts/
     collect.mjs         采集器：读 DSH 仓库，写 public/data/ 下的分片 JSON（唯一的数据来源）
     repos.mjs           用 gh 查询 topic 为 deepseek-harness 或 dsh 的新仓库，写入 public/data/repos/<北京日期>.json
+    forks.mjs           扫描全部 fork 的全部分支，写 public/data/forks.json 和 forks/<n>.json（见 §6.9）
+    forks.sh            每晚的 fork 扫描任务（cron 03:00）
     daily.sh            每日任务：更新上游 clone → 构建 → 新仓库 → 采集 → 部署 → 提交推送数据
     hourly.sh           每小时任务：新仓库 → 采集 → 部署（不构建、不提交）
     perf.mjs            4 倍 CPU 降速下测量加载与交互耗时
@@ -57,6 +60,7 @@ dsh-package-report/
     History.tsx         懒加载区块「每日版本与新增」（按页加载 history-N）
     Packages.tsx        懒加载区块「包列表」（每次 40 行；展开时才取 pkg/<i>.json）
     Closures.tsx        懒加载区块「外部依赖闭包」
+    Forks.tsx           懒加载区块「fork 里的扩展」（新增包 / 有改动的 fork 两个标签页；展开 fork 时才取 forks/<n>.json）
     Repos.tsx           懒加载区块「新仓库」（社区/官方标签页、作用/topic 分面、多种筛选，每次 30 个）
     categories.ts       新仓库作用分类规则 CATEGORIES 和 categoryOf()，前端和 Worker 共用
     Chain.tsx           依赖链组件：ChainLine、DepTree（逐级点开才渲染）、TreeToggle、ChipList（长列表先显示 12 个）
@@ -92,7 +96,10 @@ bun run deploy                                # 构建并部署到 dsh-report.ap
 ```cron
 30 6 * * * /home/zq/coding/deepseek-harness/dsh-package-report/scripts/daily.sh >> $HOME/.cache/dsh-report-daily.log 2>&1
 15 * * * * /home/zq/coding/deepseek-harness/dsh-package-report/scripts/hourly.sh >> $HOME/.cache/dsh-report-hourly.log 2>&1
+0 3 * * * /home/zq/coding/deepseek-harness/dsh-package-report/scripts/forks.sh >> $HOME/.cache/dsh-report-forks.log 2>&1
 ```
+
+`forks.sh` 见 §6.9。
 
 `daily.sh` 在每天 06:30 PDT（北京时间 21:30）运行，依次执行：
 
@@ -173,8 +180,10 @@ bun run deploy                                # 构建并部署到 dsh-report.ap
 | `history-<n>.json` | 有变化的日子按 10 天一页，带 `prevVersion`、`added[]`、`removed[]` | 每页 10-20 KB |
 | `closures.json` | 外部依赖闭包与锁文件统计 | 2 KB |
 | `repos/<day>.json` | 由 `repos.mjs` 写入，见 §6.8；summary 里的 `repoDays` 是每天的数量 | 每天 50-700 KB |
+| `forks.json` | 由 `forks.mjs` 写入，见 §6.9：总数、fork 里新增的包（按 fork 归并）、每个 fork 一行摘要；summary 里的 `forks` 是它的总数 | 1-4 MB |
+| `forks/<n>.json` | 第 n×50 到 n×50+49 个 fork（forks.json 里的行号）的分支明细 | 每个约 100 KB |
 
-采集时会清空并重写 `public/data/` 下除 `repos/` 以外的全部内容；`repos/` 只由 `repos.mjs` 改写。
+采集时会清空并重写 `public/data/` 下除 `repos/`、`forks/`、`forks.json` 以外的全部内容；`repos/` 只由 `repos.mjs` 改写，`forks*` 只由 `forks.mjs` 改写。
 
 ### 6.8 新仓库（`scripts/repos.mjs`）
 
@@ -189,6 +198,28 @@ bun run deploy                                # 构建并部署到 dsh-report.ap
   - 按现有 1.4 万个仓库统计，「其他」约 200 个；「通用插件」最多（约 5300 个），因为很多仓库只打了 `dsh-plugin` 之类的通用 topic。
   - 调整规则后，可以用 `node --experimental-strip-types` 跑一个小脚本，对 `public/data/repos/*.json` 统计各类数量来检查。
 - “新仓库”指**当天创建**、并且**现在**带这两个 topic 之一的仓库。先创建、后来才加 topic 的仓库，会算在它的创建日期那天；被删除或改成私有的仓库，重新回填时会消失。
+
+### 6.9 fork 里的扩展（`scripts/forks.mjs`）
+
+大部分 DSH 扩展写在 fork 里，没有独立仓库。脚本分四个阶段，中间结果都缓存在 `~/.cache/dsh-forks/`（可用 `DSH_FORKS_CACHE` 改），任何阶段中断后重跑都会从断点继续：
+
+1. **list**：用 GraphQL 按创建时间分页列出上游的全部 fork（每页 100 个，花费 1 点），每个 fork 带上**全部分支**的名字、头提交和提交时间（超过 30 个分支的再单独分页）。有下级 fork 的仓库排进队列，同样列出（fork 的 fork）。结果在 `forks.json`（缓存目录里的，不是 public 那份），进度在 `list-state.json`。`--fresh` 会从头重新列（每晚都用）。3 万个 fork 约 45 分钟。
+2. **compare**：先在本地排除不需要比较的分支头：
+   - 头提交在上游 master 上（`git rev-list origin/master`，所以需要上游 clone）：没有自己的改动。
+   - `dependabot/`、`renovate/` 开头的机器人分支。
+   - 提交时间早于上游仓库公开（2026-08-13 11:56 UTC）：这是上游公开前的私有历史，早期 fork 会把上游当时的内部分支一起复制过来（领先上游一千多个提交，看起来“新增”一百多个包）。
+   - 同一个头提交出现在 3 个以上直接 fork 里：是从上游已删除的分支复制来的。
+   剩下的按头提交去重，逐个调用 `compare/master...<sha>`（fork 网络里的提交可以直接在上游仓库按 sha 访问），存进 `compare/<sha>.json`。这个接口最多列 300 个文件，超过时改用 `git/trees/<sha>?recursive=1`，和合并基点的 `package.json` 路径集合做差，找出新增的包。和上游没有共同祖先的分支会记一条错误，不参与统计。
+3. **extract**：对新增的 `package.json`（`node_modules`、`test(s)`、`fixtures`、`examples`、`templates` 下的不算）按 blob sha 去重，用 `git/blobs/<sha>` 读取内容，存进 `manifest/<blob>.json`。
+4. **report**：写 `public/data/forks.json` 和 `forks/<n>.json`。
+   - 新增包同名的合并为一项，按 fork 归并（一个 fork 有几百个分支带着同一个包也只算一个 fork）。
+   - `upstream: true` 表示上游有过同名包（`graph.json` 里的当前名和历史名），多半是挪了目录，页面默认隐藏。
+   - 依赖分成 DSH 依赖和其他依赖；Cordis 包（summary 的 `cordisExcluded` 和旧名）从依赖里去掉，也不算新增包。
+   - 每个 fork 一行：分支数、最多领先多少提交、最新分支和提交、新增包数、改动过的分组。
+
+所有请求都通过 `gh`，每 100 次查一次 `rate_limit`，剩余不足 150 时睡到重置。首次全量扫描（2026-10-13）：29881 个 fork，4498 个有自己的提交，10658 个不同的分支头需要比较。之后每晚只比较新出现的头提交。
+
+`scripts/forks.sh` 每晚 03:00（北京时间）运行，前三个阶段不持锁（要一个小时以上），最后的 report 才拿 `dsh-report.lock`。它不部署也不提交：之后的 `hourly.sh` 运行 collect（把 forks 总数写进 summary，`version` 变化使分片 URL 更新）并部署，`daily.sh` 把 `public/data/` 一起提交。
 
 ## 7. 页面结构（从上到下）
 
@@ -223,19 +254,22 @@ bun run deploy                                # 构建并部署到 dsh-report.ap
    - 每个分面上的数字，是在其他筛选条件都生效、只有这一项不生效时的数量。
    - 仓库卡片显示：仓库名链接、star、作用分类、语言、创建时间、描述、topic。默认显示 30 个，「再显示 30 个」加载更多。
    - 作用分类在前端实时计算（`src/categories.ts`），改规则不用重新拉数据。规则说明见 §6.8。
-4. **每日版本与新增**：
+4. **fork 里的扩展**（还没有扫描数据时不显示）：
+   - 「新增包」标签页：按目录分组的分面、搜索、排序（fork 数、最近提交、名称）、只看依赖 DSH 的、含上游同名包。每个包显示全称、目录、作用、DSH 依赖和其他依赖（各先显示 6 个）、出现在哪些 fork（链接到最新的分支，`+N` 表示这个 fork 还有 N 个分支带着它）。
+   - 「有改动的 fork」标签页：按改动分组的分面、搜索、最少领先提交数、排序（新增包数、最近提交、领先提交数、分支数、star）、只看新增包的。点「查看 N 个分支」才请求 `forks/<n>.json`，展开的卡片占满整行，每个分支显示领先和落后（链接到 GitHub compare）、改动文件数、新增包、改动目录。
+5. **每日版本与新增**：
    - 4 张卡片：最新版本、当前包总数、近 7 天新增、近 7 天删除。
    - 包总数折线图。
    - 按天的卡片，只列有新增、删除或版本变化的日子，默认显示 10 天，底部按钮每次再加载一页（10 天）。
    - 每个新增包直接显示：全称、类型、目录、作用（description）、直接依赖（全称）、链条摘要（传递依赖数、深度、最长链）。“依赖树”按钮展开可逐级展开的树，出现环或重复时显示 ↺。
-5. **profile 插件**：每个 profile 的行数、启用、条件启用、禁用、涉及的包数，以及对应的条形图。点击一行可以过滤下方的包列表。
-6. **按分组**：每组的插件、库、client 数量。点击可以过滤包列表。
-7. **包列表**：
+6. **profile 插件**：每个 profile 的行数、启用、条件启用、禁用、涉及的包数，以及对应的条形图。点击一行可以过滤下方的包列表。
+7. **按分组**：每组的插件、库、client 数量。点击可以过滤包列表。
+8. **包列表**：
    - 默认只显示插件，按被依赖数倒序，每次显示 40 行。
    - 每行显示：全称和作用、类型和分组、首次出现日期、入口数、所在 profile（5 个都有时显示“全部”）、直接依赖数、传递依赖数、深度、被依赖数、外部依赖数。
    - 可以搜索，可以按类型、分组、profile 过滤，也可以只看未被 profile 引用的包。点列头排序。
    - 点击一行展开：插件入口、profile 行（状态和条件）、依赖、被依赖、外部依赖和依赖树。
-8. **外部依赖闭包**。
+9. **外部依赖闭包**。
 
 设计约束：信息密度要高但要有层次；桌面宽 1180px，手机宽 390px 时不能横向溢出（宽表格在自己的容器里横向滚动）；浅色和深色都要能看清。改完 UI 要用 Playwright 截图检查桌面和手机两种宽度。Playwright 在 `~/coding/dsh-report-src/node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/index.mjs`，headless Chromium 已下载到 `~/.cache/ms-playwright`。
 
@@ -249,7 +283,7 @@ bun run deploy                                # 构建并部署到 dsh-report.ap
 ### 8.1 JSON 接口（`worker/index.ts`，说明书在 `worker/API.md`）
 
 - `wrangler.jsonc` 里的 `assets.run_worker_first: ["/api", "/api/*", "/README.md"]` 让这些路径先经过 Worker，其余路径直接返回静态资源。Worker 通过 `env.ASSETS.fetch('/data/…')` 读取数据分片，每个 isolate 只读取一次；因为资源和代码一起部署，这样缓存不会读到旧数据。
-- 接口有：`/api`、`/api/summary`、`/api/packages`、`/api/packages/{name}`（包名里的斜杠不需要转义）、`/api/profiles`、`/api/history`、`/api/repos`（最多 31 天，支持 `facets=true`）、`/api/repos/days`、`/api/categories`。参数和字段以 `worker/API.md` 为准，**改接口时必须同步改 API.md**。
+- 接口有：`/api`、`/api/summary`、`/api/packages`、`/api/packages/{name}`（包名里的斜杠不需要转义）、`/api/profiles`、`/api/history`、`/api/repos`（最多 31 天，支持 `facets=true`）、`/api/repos/days`、`/api/categories`、`/api/forks`、`/api/forks/{owner}/{repo}`、`/api/forks/packages`。参数和字段以 `worker/API.md` 为准，**改接口时必须同步改 API.md**。
 - 返回格式统一为 `{ data, meta }`，`meta` 里带 `total`、`limit`、`offset`、`generatedAt`、`source`。出错时返回 `{ error: { code, message } }`，状态码为 400、404、405 或 500。参数值不合法一律返回 400，不会被悄悄忽略。
 - 响应头带 CORS `*` 和 `Cache-Control: public, max-age=300`。加上 `pretty=1` 输出缩进格式。
 - 作用分类和依赖图直接 import 前端的 `src/categories.ts` 与 `src/graph.ts`，保证页面和接口的结果一致。

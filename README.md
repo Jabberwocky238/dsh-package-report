@@ -10,6 +10,7 @@ DeepSeek Harness（[deepseek-ai/deepseek-harness](https://github.com/deepseek-ai
 
 - **总览**：DSH 包总数（不含 `vendor/` 下的 Cordis）、Cordis 可加载插件包数、被内置 profile 引用的包数、`dsh` CLI 的外部依赖闭包大小。
 - **新仓库**：用 `gh` 查询 GitHub 上 topic 为 `deepseek-harness` 或 `dsh`、按北京时间当天创建的仓库，每小时刷新一次。分为官方（deepseek-ai）和社区，可以按作用分类、topic、语言、star、日期筛选。
+- **fork 里的扩展**：大部分 DSH 扩展没有独立仓库，而是写在 fork 里。每晚扫描上游的全部 fork（含 fork 的 fork）和它们的所有分支，列出和上游 master 分歧的分支、它们改了哪些包，以及新增了哪些 workspace 包（带作用和依赖）。
 - **每日版本与新增**：沿 upstream `master` 的 first-parent 提交，每天（北京时间）取最后一个提交，给出根 `package.json` 版本、workspace 包总数、新增与删除的包；每个新增包直接列出全称、作用、直接依赖和依赖链条摘要，依赖树可展开。
 - **各 profile 装载的插件**：把 `packages/bundle/*` 的补丁（base + 模式层；web 另加 4 个 preset）按行 id 合并，统计启用、条件启用（`!!js`）和禁用的行。
 - **按分组**：每个 `packages/<group>` 下插件、普通库、Client 包的数量。
@@ -37,4 +38,7 @@ bun run deploy                                        # 构建并部署到 Cloud
 
 ```cron
 30 6 * * * /home/zq/coding/deepseek-harness/dsh-package-report/scripts/daily.sh >> $HOME/.cache/dsh-report-daily.log 2>&1
+0 3 * * * /home/zq/coding/deepseek-harness/dsh-package-report/scripts/forks.sh >> $HOME/.cache/dsh-report-forks.log 2>&1
 ```
+
+`scripts/forks.sh` 是每晚的 fork 扫描，结果由之后的 hourly 部署、daily 提交。
