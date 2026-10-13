@@ -36,6 +36,8 @@ export interface Summary {
   repoDays: [string, number, number][]
   /** Every official repository (owner deepseek-ai) across all fetched days, newest first. */
   officialRepos: { day: string; name: string; description: string; stars: number; language: string | null; createdAt: string }[]
+  /** Totals of forks.json (written by scripts/forks.mjs); absent until a fork scan has run. */
+  forks?: ForkTotals & { generatedAt: string }
   historyPages: number
   /** [day, total, added count], newest first. */
   days: [string, number, number][]
@@ -121,4 +123,61 @@ export interface RepoDay {
     fork: boolean
     matched: string[]
   }[]
+}
+
+export interface ForkTotals {
+  /** Forks of upstream and forks of forks that were listed. */
+  forks: number
+  /** Fork branches whose head is not an upstream master commit (bot branches excluded). */
+  divergentBranches: number
+  divergentForks: number
+  distinctHeads: number
+  /** Packages added in forks whose name upstream never had. */
+  newPackages: number
+}
+
+/** A workspace package (package.json) that some fork branch adds relative to upstream master. */
+export interface ForkPackage {
+  name: string
+  description: string
+  dir: string
+  /** Upstream has (or once had) a package with this name, so this is a move or re-add, not a new extension. */
+  upstream: boolean
+  /** package.json carries a `dsh` field. */
+  dsh: boolean
+  /** Dependencies that are DSH packages. */
+  dshDeps: string[]
+  /** All other dependencies. */
+  deps: string[]
+  forks: { fork: string; branch: string; sha: string; date: string | null }[]
+}
+
+/** A fork branch that diverges from upstream master. */
+export interface ForkBranch {
+  fork: string
+  branch: string
+  default: boolean
+  sha: string
+  /** Commits ahead of / behind upstream master. */
+  ahead: number
+  behind: number
+  /** Files changed (the compare API lists at most 300; `capped` marks that). */
+  files: number
+  capped: boolean
+  date: string | null
+  message: string
+  /** Names of packages this branch adds. */
+  added: string[]
+  /** Package directories with changed files, e.g. packages/llm/llm-deepseek. */
+  touched: string[]
+  stars: number
+}
+
+/** forks.json. */
+export interface Forks {
+  generatedAt: string
+  upstreamHead: string
+  totals: ForkTotals
+  packages: ForkPackage[]
+  branches: ForkBranch[]
 }

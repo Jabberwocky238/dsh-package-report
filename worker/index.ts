@@ -3,7 +3,7 @@
 import apiDoc from './API.md?raw'
 import { CATEGORIES, CATEGORY_LABEL, categoryOf, type CategoryId, type Repo } from '../src/categories.ts'
 import { DepGraph } from '../src/graph.ts'
-import type { Day, Graph, PackageDetail, PackageKind, PackageRow, RepoDay, Summary } from '../src/types.ts'
+import type { Day, ForkBranch, ForkPackage, Forks, Graph, PackageDetail, PackageKind, PackageRow, RepoDay, Summary } from '../src/types.ts'
 
 class HttpError extends Error {
   readonly status: number
@@ -211,6 +211,59 @@ async function repos(d: Data, q: Query) {
   return { data: res.data, meta }
 }
 
+const FORK_PACKAGE_SORTS = ['forks', 'date', 'name'] as const
+const FORK_BRANCH_SORTS = ['date', 'ahead', 'behind', 'files', 'added', 'stars', 'name'] as const
+const lastDate = (p: ForkPackage) => p.forks.reduce((m, f) => (f.date && f.date > m ? f.date : m), '')
+
+async function forksShard(d: Data): Promise<Forks> {
+  if (!(await d.summary()).forks) throw new HttpError(404, 'not_found', 'no fork scan has been published yet')
+  return d.shard<Forks>('forks')
+}
+const forksMeta = (f: Forks) => ({ scannedAt: f.generatedAt, upstreamHead: f.upstreamHead, totals: f.totals })
+
+async function forkPackages(d: Data, q: Query) {
+  const f = await forksShard(d)
+  const needle = q.str('q')?.toLowerCase()
+  const dirs = q.list('dir')
+  const fork = q.str('fork')?.toLowerCase()
+  const upstream = q.bool('upstream', false)
+  const dshOnly = q.bool('dsh', false)
+  const dependsOn = q.list('depends_on')
+  const since = q.day('since')
+  const minForks = q.int('min_forks', 0, 0, 1e6)
+  const sort = q.oneOf('sort', FORK_PACKAGE_SORTS, 'forks')
+  const order = q.oneOf('order', ['asc', 'desc'] as const, sort === 'name' ? 'asc' : 'desc')
+  const items = f.packages.filter((p) => (upstream || !p.upstream) && (!dshOnly || p.dsh || p.dshDeps.length > 0)
+    && (!dirs.length || dirs.some((x) => p.dir === x || p.dir.startsWith(`${x.replace(/\/+$/, '')}/`)))
+    && (!fork || p.forks.some((x) => x.fork.toLowerCase() === fork))
+    && dependsOn.every((n) => p.dshDeps.includes(n) || p.deps.includes(n))
+    && (!since || lastDate(p) >= since) && p.forks.length >= minForks
+    && (!needle || p.name.toLowerCase().includes(needle) || p.description.toLowerCase().includes(needle)))
+  const key = { forks: (p: ForkPackage) => p.forks.length, date: lastDate, name: (p: ForkPackage) => p.name }[sort]
+  const res = paginate(sortBy(items, key, order), q.page(50, 500))
+  return { data: res.data, meta: { ...res.meta, ...forksMeta(f) } }
+}
+
+async function forkBranches(d: Data, q: Query) {
+  const f = await forksShard(d)
+  const needle = q.str('q')?.toLowerCase()
+  const fork = q.str('fork')?.toLowerCase()
+  const hasPackages = q.bool('has_packages', false)
+  const defaultOnly = q.bool('default', false)
+  const touches = q.list('touches')
+  const minAhead = q.int('min_ahead', 0, 0, 1e9)
+  const since = q.day('since')
+  const sort = q.oneOf('sort', FORK_BRANCH_SORTS, 'date')
+  const order = q.oneOf('order', ['asc', 'desc'] as const, sort === 'name' ? 'asc' : 'desc')
+  const items = f.branches.filter((b) => (!fork || b.fork.toLowerCase() === fork) && (!hasPackages || b.added.length > 0) && (!defaultOnly || b.default)
+    && touches.every((t) => b.touched.some((x) => x === t || x.startsWith(`${t.replace(/\/+$/, '')}/`)))
+    && b.ahead >= minAhead && (!since || (b.date ?? '') >= since)
+    && (!needle || `${b.fork}@${b.branch}`.toLowerCase().includes(needle) || b.message.toLowerCase().includes(needle) || b.added.some((n) => n.toLowerCase().includes(needle))))
+  const key = { date: (b: ForkBranch) => b.date ?? '', ahead: (b: ForkBranch) => b.ahead, behind: (b: ForkBranch) => b.behind, files: (b: ForkBranch) => b.files, added: (b: ForkBranch) => b.added.length, stars: (b: ForkBranch) => b.stars, name: (b: ForkBranch) => `${b.fork}@${b.branch}`.toLowerCase() }[sort]
+  const res = paginate(sortBy(items, key, order), q.page(50, 500))
+  return { data: res.data, meta: { ...res.meta, ...forksMeta(f) } }
+}
+
 async function route(req: Request, env: Env): Promise<{ data: unknown; meta?: Record<string, unknown> }> {
   const url = new URL(req.url)
   const d = new Data(env, url.origin)
@@ -219,7 +272,7 @@ async function route(req: Request, env: Env): Promise<{ data: unknown; meta?: Re
   if (path === '/api' || path === '/api/') {
     return { data: {
       readme: `${url.origin}/README.md`,
-      endpoints: ['/api/summary', '/api/packages', '/api/packages/{name}', '/api/profiles', '/api/history', '/api/repos', '/api/repos/days', '/api/categories'],
+      endpoints: ['/api/summary', '/api/packages', '/api/packages/{name}', '/api/profiles', '/api/history', '/api/repos', '/api/repos/days', '/api/categories', '/api/forks', '/api/forks/packages'],
     } }
   }
   if (path === '/api/summary') {
@@ -235,6 +288,8 @@ async function route(req: Request, env: Env): Promise<{ data: unknown; meta?: Re
   if (path === '/api/history') return history(d, q)
   if (path === '/api/repos/days') return { data: (await d.summary()).repoDays.map(([day, total, official]) => ({ day, total, official, community: total - official })) }
   if (path === '/api/repos') return repos(d, q)
+  if (path === '/api/forks') return forkBranches(d, q)
+  if (path === '/api/forks/packages') return forkPackages(d, q)
   if (path === '/api/categories') {
     return { data: [...CATEGORIES.map((c) => ({ id: c.id, label: c.label, keywords: c.keywords })), { id: 'other', label: CATEGORY_LABEL.other, keywords: [] }] }
   }

@@ -48,6 +48,8 @@
 | `GET /api/repos` | 新仓库（可按来源、作用、topic、语言、star 等筛选） |
 | `GET /api/repos/days` | 有新仓库数据的日期，以及每天的数量 |
 | `GET /api/categories` | 新仓库的作用分类，以及每类的判定关键词 |
+| `GET /api/forks` | DSH fork 里和上游分歧的分支：领先多少提交、改了哪些包目录、新增了哪些包 |
+| `GET /api/forks/packages` | fork 分支里新增的 workspace 包（大部分 DSH 扩展没有独立仓库，写在 fork 里） |
 
 ## GET /api/packages
 
@@ -198,6 +200,84 @@ curl '{{ORIGIN}}/api/repos?from=2026-09-01&to=2026-09-30&facets=true&limit=1'
 - 英文关键词按整词匹配，中文关键词按子串匹配。
 - 都没有命中的归入 `other`。
 
+## GET /api/forks 与 GET /api/forks/packages
+
+数据来自对 `deepseek-ai/deepseek-harness` 全部 fork（含 fork 的 fork）的扫描：
+- 每个 fork 的**所有分支**都检查，`dependabot/`、`renovate/` 开头的机器人分支除外。
+- 分支头本身就是上游 master 上的某个提交时，这个分支没有自己的改动，不收录。
+- 剩下的分支和上游 master 比较，得到领先和落后的提交数、改动的文件，以及新增的 `package.json`。`node_modules`、`test`、`fixtures`、`examples`、`templates` 下的不算。
+
+两个接口的 `meta` 里都带 `scannedAt`（扫描时间）、`upstreamHead`（比较时上游 master 的提交）和 `totals`（fork 数、分歧的 fork 和分支数、新增包数）。还没有扫描数据时返回 404。
+
+### GET /api/forks
+
+列出分歧分支，默认按最近提交时间从新到旧排列。
+
+| 参数 | 说明 |
+|---|---|
+| `fork` | 只看某个 fork，`owner/repo`，不区分大小写 |
+| `has_packages` | `true` 时只看新增了包的分支 |
+| `default` | `true` 时只看各 fork 的默认分支 |
+| `touches` | 改动过这些目录（全部满足），如 `packages/llm` 或 `packages/llm/llm-deepseek` |
+| `min_ahead` | 领先上游的提交数不少于该值 |
+| `since` | 最后一次提交不早于该日期 |
+| `q` | `owner/repo@branch`、最后一次提交信息或新增包名包含该文本 |
+| `sort` | `date`（默认）、`ahead`、`behind`、`files`、`added`、`stars`、`name` |
+| `order` | `asc` 或 `desc`；按 name 排序时默认 `asc`，其余默认 `desc` |
+| `limit` | 默认 50，最大 500 |
+
+每一项的字段：
+
+| 字段 | 说明 |
+|---|---|
+| `fork`、`branch` | fork 仓库和分支名 |
+| `default` | 是否为该 fork 的默认分支 |
+| `sha` | 分支头提交 |
+| `ahead`、`behind` | 领先和落后上游 master 的提交数 |
+| `files`、`capped` | 改动的文件数；GitHub 最多列出 300 个，`capped` 为 `true` 时实际更多 |
+| `date`、`message` | 最后一次提交的时间和标题 |
+| `added` | 这个分支新增的包名 |
+| `touched` | 有改动的包目录，如 `packages/llm/llm-deepseek` |
+| `stars` | fork 仓库的 star 数 |
+
+### GET /api/forks/packages
+
+列出 fork 里新增的包，同名包合并为一项，默认按出现在多少个分支里从多到少排列。
+
+| 参数 | 说明 |
+|---|---|
+| `upstream` | `true` 时也包含上游有过同名包的项（多半是移动目录或改回旧名），默认排除 |
+| `dsh` | `true` 时只看带 `dsh` 字段或依赖 DSH 包的 |
+| `dir` | 目录前缀，可多选，如 `packages/llm,packages/channel` |
+| `depends_on` | 依赖这些包（全部满足），如 `@deepseek-ai/dsh-core` |
+| `fork` | 出现在某个 fork 里 |
+| `min_forks` | 至少出现在这么多个分支里 |
+| `since` | 最近一次相关提交不早于该日期 |
+| `q` | 包名或描述包含该文本 |
+| `sort` | `forks`（默认）、`date`、`name` |
+| `order` | `asc` 或 `desc`；按 name 排序时默认 `asc`，其余默认 `desc` |
+| `limit` | 默认 50，最大 500 |
+
+每一项的字段：
+
+| 字段 | 说明 |
+|---|---|
+| `name`、`description`、`dir` | 包名、描述、所在目录（取第一次见到它的分支） |
+| `upstream` | 上游是否有过同名包 |
+| `dsh` | `package.json` 是否带 `dsh` 字段 |
+| `dshDeps` | 依赖的 DSH 包 |
+| `deps` | 其他依赖 |
+| `forks` | `[{ fork, branch, sha, date }]`，出现在哪些分支 |
+
+```sh
+# 新增包最多的分歧分支
+curl '{{ORIGIN}}/api/forks?has_packages=true&sort=added'
+# 改过 LLM 适配器、领先至少 5 个提交的分支
+curl '{{ORIGIN}}/api/forks?touches=packages/llm&min_ahead=5'
+# 依赖 DSH 的新增包，按最近提交排序
+curl '{{ORIGIN}}/api/forks/packages?dsh=true&sort=date'
+```
+
 ## GET /api/summary 与 GET /api/profiles
 
 `/api/summary` 返回首页用到的全部汇总数字：
@@ -206,6 +286,7 @@ curl '{{ORIGIN}}/api/repos?from=2026-09-01&to=2026-09-30&facets=true&limit=1'
 - `profiles`、`groups`：各 profile、各分组的统计。
 - `repoDays`：`[day, total, official]` 数组。
 - `officialRepos`：全部官方仓库。
+- `forks`：fork 扫描的总数和扫描时间，字段同 `/api/forks` 的 `meta.totals`。
 
 `/api/profiles` 返回 `[{ id, bundles, rows, on, conditional, off, packages }]`：
 - `rows`：合并 bundle 补丁后得到的插件行数，其中 `on` 为启用、`conditional` 为条件启用、`off` 为禁用。

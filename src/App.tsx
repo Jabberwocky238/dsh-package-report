@@ -5,6 +5,7 @@ import { LazySection, Loading } from './LazySection.tsx'
 import type { Summary } from './types.ts'
 
 const loadRepos = () => import('./Repos.tsx')
+const loadForks = () => import('./Forks.tsx')
 const loadHistory = () => import('./History.tsx')
 const loadPackages = () => import('./Packages.tsx')
 const loadClosures = () => import('./Closures.tsx')
@@ -122,6 +123,7 @@ export default function App() {
       </header>
       <Overview s={s} />
       <LazySection title="新仓库" minHeight={900} load={loadRepos} props={{ summary: s }} />
+      {s.forks && <LazySection title="fork 里的扩展" minHeight={900} load={loadForks} props={{ summary: s }} />}
       <LazySection title="每日版本与新增" minHeight={1200} load={loadHistory} props={{ summary: s }} />
       <Profiles s={s} active={profile} onSelect={setProfile} />
       <Groups s={s} active={group} onSelect={setGroup} />
