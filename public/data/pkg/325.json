@@ -1,1 +1,1 @@
-{"dir":"packages/web/web-search-exa","entries":[{"entry":"@deepseek-ai/dsh-web-search-exa","kind":"object"}],"workspaceDeps":["@deepseek-ai/dsh-launch-environment","@deepseek-ai/dsh-web"],"dependents":[],"externalDeps":[],"rows":[]}
+{"dir":"packages/util/workspace-path","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-api-session-controller"],"externalDeps":[],"rows":[]}

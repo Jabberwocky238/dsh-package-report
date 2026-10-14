@@ -1,1 +1,1 @@
-{"dir":"packages/experimental/tool-worktree","entries":[{"entry":"@deepseek-ai/dsh-experimental-tool-worktree","kind":"object"}],"workspaceDeps":["@deepseek-ai/dsh-experimental-worktree","@deepseek-ai/dsh-tools"],"dependents":["@deepseek-ai/dsh"],"externalDeps":[],"rows":[]}
+{"dir":"packages/experimental/terminal-bundle","entries":[],"workspaceDeps":["@deepseek-ai/dsh-terminal","@deepseek-ai/dsh-terminal-bash","@deepseek-ai/dsh-tool-terminal"],"dependents":["@deepseek-ai/dsh"],"externalDeps":[],"rows":[]}

@@ -1,1 +1,1 @@
-{"dir":"packages/client/store","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-experimental-client-ui-voice-input","@deepseek-ai/dsh-client-test-runtime"],"externalDeps":[],"rows":[]}
+{"dir":"packages/client/shortcuts","entries":[],"workspaceDeps":["@deepseek-ai/dsh-util-crypto","@deepseek-ai/dsh-util-values"],"dependents":["@deepseek-ai/dsh-web-app"],"externalDeps":[],"rows":[{"profile":"web","id":"shortcuts","entry":"@deepseek-ai/dsh-client-shortcuts","parent":null,"state":"on"}]}

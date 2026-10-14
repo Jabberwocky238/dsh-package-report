@@ -1,1 +1,1 @@
-{"dir":"packages/experimental/hook-protocol","entries":[],"workspaceDeps":["@deepseek-ai/dsh-session","@deepseek-ai/dsh-shell"],"dependents":["@deepseek-ai/dsh-hooks-claude-code","@deepseek-ai/dsh-hooks-codex"],"externalDeps":[],"rows":[]}
+{"dir":"packages/experimental/computer-use-cua-driver-mcp","entries":[{"entry":"@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp","kind":"object"}],"workspaceDeps":["@deepseek-ai/dsh-computer-use","@deepseek-ai/dsh-mcp-client"],"dependents":[],"externalDeps":[],"rows":[]}
