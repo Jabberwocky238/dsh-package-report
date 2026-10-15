@@ -1,1 +1,1 @@
-{"dir":"packages/experimental/ralph-bundle","entries":[],"workspaceDeps":["@deepseek-ai/dsh-tool-ralph","@deepseek-ai/dsh-workflow-ptc"],"dependents":["@deepseek-ai/dsh"],"externalDeps":[],"rows":[]}
+{"dir":"packages/experimental/inspector-profile","entries":[],"workspaceDeps":["@deepseek-ai/dsh-experimental-inspector","@deepseek-ai/dsh-experimental-session-inspector"],"dependents":["@deepseek-ai/dsh"],"externalDeps":[],"rows":[]}

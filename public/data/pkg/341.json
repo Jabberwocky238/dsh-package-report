@@ -1,0 +1,1 @@
+{"dir":"apps/desktop","entries":[],"workspaceDeps":["@deepseek-ai/dsh-api-gateway"],"dependents":[],"externalDeps":["electron-updater","semver","ws"],"rows":[]}

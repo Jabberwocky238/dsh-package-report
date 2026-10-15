@@ -1,1 +1,1 @@
-{"dir":"packages/experimental/terminal-bundle","entries":[],"workspaceDeps":["@deepseek-ai/dsh-terminal","@deepseek-ai/dsh-terminal-bash","@deepseek-ai/dsh-tool-terminal"],"dependents":["@deepseek-ai/dsh"],"externalDeps":[],"rows":[]}
+{"dir":"packages/experimental/skill-badge","entries":[{"entry":"@deepseek-ai/dsh-skill-badge","kind":"object"}],"workspaceDeps":["@deepseek-ai/dsh-skill"],"dependents":["@deepseek-ai/dsh-experimental-badge-skill-bundle"],"externalDeps":[],"rows":[]}

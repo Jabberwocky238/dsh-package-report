@@ -1,1 +1,1 @@
-{"dir":"packages/experimental/session-titles-bundle","entries":[],"workspaceDeps":["@deepseek-ai/dsh-session-title-all-prompts-llm"],"dependents":["@deepseek-ai/dsh"],"externalDeps":[],"rows":[]}
+{"dir":"packages/experimental/session-inspector","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-experimental-inspector-profile"],"externalDeps":[],"rows":[]}
