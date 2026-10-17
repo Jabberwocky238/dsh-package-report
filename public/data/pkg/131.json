@@ -1,1 +1,1 @@
-{"dir":"packages/experimental/client-ui-claude-code-mods","entries":[],"workspaceDeps":[],"dependents":[],"externalDeps":[],"rows":[]}
+{"dir":"packages/experimental/client-ui-agent-team","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-experimental-agent-team-profile"],"externalDeps":[],"rows":[]}

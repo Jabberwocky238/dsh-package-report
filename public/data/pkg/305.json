@@ -1,1 +1,1 @@
-{"dir":"packages/test-support/remote-mock","entries":[],"workspaceDeps":["@deepseek-ai/dsh-typert-protocol"],"dependents":["@deepseek-ai/dsh-client-test-runtime"],"externalDeps":["@vitest/spy"],"rows":[]}
+{"dir":"packages/test-support/loader-smoke","entries":[],"workspaceDeps":["@deepseek-ai/dsh-agent","@deepseek-ai/dsh-http-proxy","@deepseek-ai/dsh-llm","@deepseek-ai/dsh-session"],"dependents":["@deepseek-ai/dsh-session-snapshot"],"externalDeps":["execa","tsx"],"rows":[]}

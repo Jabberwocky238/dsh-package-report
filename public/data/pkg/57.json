@@ -1,1 +1,1 @@
-{"dir":"packages/client/ui-primitives","entries":[],"workspaceDeps":[],"dependents":[],"externalDeps":[],"rows":[]}
+{"dir":"packages/client/ui-plugin-market","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-experimental-plugin-market-bundle"],"externalDeps":[],"rows":[]}

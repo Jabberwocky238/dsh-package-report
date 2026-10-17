@@ -1,1 +1,1 @@
-{"dir":"packages/experimental/skill-badge","entries":[{"entry":"@deepseek-ai/dsh-skill-badge","kind":"object"}],"workspaceDeps":["@deepseek-ai/dsh-skill"],"dependents":["@deepseek-ai/dsh-experimental-badge-skill-bundle"],"externalDeps":[],"rows":[]}
+{"dir":"packages/experimental/session-titles-bundle","entries":[],"workspaceDeps":["@deepseek-ai/dsh-session-title-all-prompts-llm"],"dependents":["@deepseek-ai/dsh"],"externalDeps":[],"rows":[]}

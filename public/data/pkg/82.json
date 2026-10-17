@@ -1,1 +1,1 @@
-{"dir":"packages/client/ui-slots","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-client-test-runtime"],"externalDeps":[],"rows":[]}
+{"dir":"packages/client/ui-skill","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-web-app"],"externalDeps":[],"rows":[{"profile":"web","id":"ui-skill","entry":"@deepseek-ai/dsh-client-ui-skill","parent":null,"state":"on"}]}

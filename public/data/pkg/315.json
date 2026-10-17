@@ -1,1 +1,1 @@
-{"dir":"packages/util/code-language","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-tool-fs"],"externalDeps":[],"rows":[]}
+{"dir":"packages/util/chunked-list","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-subagent"],"externalDeps":["zod"],"rows":[]}

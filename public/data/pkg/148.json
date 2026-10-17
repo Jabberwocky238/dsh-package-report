@@ -1,1 +1,1 @@
-{"dir":"packages/experimental/session-search","entries":[],"workspaceDeps":["@deepseek-ai/dsh-session-query-sqlite","@deepseek-ai/dsh-tool-session-query"],"dependents":["@deepseek-ai/dsh"],"externalDeps":[],"rows":[]}
+{"dir":"packages/experimental/session-inspector","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-experimental-inspector-profile"],"externalDeps":[],"rows":[]}

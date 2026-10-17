@@ -1,1 +1,1 @@
-{"dir":"packages/experimental/plugin-market-bundle","entries":[],"workspaceDeps":["@deepseek-ai/dsh-client-ui-plugin-market","@deepseek-ai/dsh-plugin-market"],"dependents":["@deepseek-ai/dsh"],"externalDeps":[],"rows":[]}
+{"dir":"packages/experimental/inspector-profile","entries":[],"workspaceDeps":["@deepseek-ai/dsh-experimental-inspector","@deepseek-ai/dsh-experimental-session-inspector"],"dependents":["@deepseek-ai/dsh"],"externalDeps":[],"rows":[]}

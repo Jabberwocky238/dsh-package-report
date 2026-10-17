@@ -1,1 +1,1 @@
-{"dir":"packages/util/plugin-market-index","entries":[],"workspaceDeps":["@deepseek-ai/dsh-package-manifest"],"dependents":["@deepseek-ai/dsh-plugin-market","@deepseek-ai/dsh-plugin-market-generator"],"externalDeps":["semver"],"rows":[]}
+{"dir":"packages/util/package-manifest","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-app-boot","@deepseek-ai/dsh-plugin-market","@deepseek-ai/dsh-plugin-market-index"],"externalDeps":[],"rows":[]}

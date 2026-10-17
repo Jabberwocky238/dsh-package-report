@@ -1,1 +1,1 @@
-{"dir":"packages/test-support/session-snapshot","entries":[],"workspaceDeps":["@deepseek-ai/dsh-http-proxy","@deepseek-ai/dsh-llm-replay","@deepseek-ai/dsh-loader-smoke","@deepseek-ai/dsh-session","@deepseek-ai/dsh-session-format"],"dependents":[],"externalDeps":["@agentclientprotocol/sdk","js-yaml","vitest"],"rows":[]}
+{"dir":"packages/test-support/remote-mock","entries":[],"workspaceDeps":["@deepseek-ai/dsh-typert-protocol"],"dependents":["@deepseek-ai/dsh-client-test-runtime"],"externalDeps":["@vitest/spy"],"rows":[]}

@@ -1,1 +1,1 @@
-{"dir":"packages/experimental/computer-use-cua-driver-mcp","entries":[{"entry":"@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp","kind":"object"}],"workspaceDeps":["@deepseek-ai/dsh-computer-use","@deepseek-ai/dsh-mcp-client"],"dependents":[],"externalDeps":[],"rows":[]}
+{"dir":"packages/experimental/client-ui-voice-input","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-experimental-voice-input-bundle"],"externalDeps":[],"rows":[]}

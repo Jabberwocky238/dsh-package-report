@@ -1,1 +1,1 @@
-{"dir":"packages/client/ui-plugin-market","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-experimental-plugin-market-bundle"],"externalDeps":[],"rows":[]}
+{"dir":"packages/client/ui-plugin-manager","entries":[],"workspaceDeps":["@deepseek-ai/dsh-timeout","@deepseek-ai/dsh-typert-protocol"],"dependents":["@deepseek-ai/dsh-web-app"],"externalDeps":["zod"],"rows":[{"profile":"web","id":"ui-plugin-manager","entry":"@deepseek-ai/dsh-client-ui-plugin-manager","parent":null,"state":"on"}]}
