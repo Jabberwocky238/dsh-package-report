@@ -1,1 +1,1 @@
-{"dir":"packages/experimental/client-ui-agent-team","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-experimental-agent-team-profile"],"externalDeps":[],"rows":[]}
+{"dir":"packages/experimental/badge-skill-bundle","entries":[],"workspaceDeps":["@deepseek-ai/dsh-skill-badge"],"dependents":["@deepseek-ai/dsh"],"externalDeps":[],"rows":[]}

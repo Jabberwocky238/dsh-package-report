@@ -1,1 +1,1 @@
-{"dir":"packages/experimental/inspector","entries":[],"workspaceDeps":["@deepseek-ai/dsh-app-boot","@deepseek-ai/dsh-util-crypto"],"dependents":["@deepseek-ai/dsh-experimental-inspector-profile"],"externalDeps":["open","serve-static","ws"],"rows":[]}
+{"dir":"packages/experimental/client-ui-voice-input","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-experimental-voice-input-bundle"],"externalDeps":[],"rows":[]}

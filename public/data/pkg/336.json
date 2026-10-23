@@ -1,1 +1,1 @@
-{"dir":"packages/web/web-search-exa","entries":[{"entry":"@deepseek-ai/dsh-web-search-exa","kind":"object"}],"workspaceDeps":["@deepseek-ai/dsh-launch-environment","@deepseek-ai/dsh-web"],"dependents":[],"externalDeps":[],"rows":[]}
+{"dir":"packages/util/deque","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-api-gateway","@deepseek-ai/dsh-api-remotes","@deepseek-ai/dsh-api-session-controller","@deepseek-ai/dsh-api-terminal-controller","@deepseek-ai/dsh-api-workspace-controller","@deepseek-ai/dsh-api-workspace-files"],"externalDeps":[],"rows":[]}

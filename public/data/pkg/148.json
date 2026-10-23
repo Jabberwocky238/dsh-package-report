@@ -1,1 +1,1 @@
-{"dir":"packages/experimental/session-inspector","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-experimental-inspector-profile"],"externalDeps":[],"rows":[]}
+{"dir":"packages/experimental/cua","entries":[],"workspaceDeps":["@deepseek-ai/dsh-atomic-write","@deepseek-ai/dsh-attachment","@deepseek-ai/dsh-computer-use","@deepseek-ai/dsh-scope","@deepseek-ai/dsh-typert-protocol","@deepseek-ai/dsh-user-questions"],"dependents":["@deepseek-ai/dsh-cua-bundle","@deepseek-ai/dsh-experimental-cua-macos"],"externalDeps":["zod"],"rows":[]}

@@ -1,1 +1,1 @@
-{"dir":"packages/experimental/session-search","entries":[],"workspaceDeps":["@deepseek-ai/dsh-session-query-sqlite","@deepseek-ai/dsh-tool-session-query"],"dependents":["@deepseek-ai/dsh"],"externalDeps":[],"rows":[]}
+{"dir":"packages/experimental/cua-bundle","entries":[],"workspaceDeps":["@deepseek-ai/dsh-computer-use","@deepseek-ai/dsh-cua","@deepseek-ai/dsh-experimental-cua-macos"],"dependents":["@deepseek-ai/dsh"],"externalDeps":[],"rows":[]}

@@ -1,0 +1,1 @@
+{"dir":"apps/plugin-market-generator","entries":[],"workspaceDeps":["@deepseek-ai/dsh-plugin-market-index"],"dependents":[],"externalDeps":["commander","hosted-git-info","resolve.exports","semver","tar","yaml"],"rows":[]}

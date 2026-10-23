@@ -1,1 +1,1 @@
-{"dir":"packages/experimental/hook-protocol","entries":[],"workspaceDeps":["@deepseek-ai/dsh-session","@deepseek-ai/dsh-shell"],"dependents":["@deepseek-ai/dsh-hooks-claude-code","@deepseek-ai/dsh-hooks-codex"],"externalDeps":[],"rows":[]}
+{"dir":"packages/experimental/client-ui-cot-translation","entries":[],"workspaceDeps":["@deepseek-ai/dsh-experimental-translator","@deepseek-ai/dsh-typert-protocol"],"dependents":["@deepseek-ai/dsh-experimental-cot-translation-bundle"],"externalDeps":["zod"],"rows":[]}

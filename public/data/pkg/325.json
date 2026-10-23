@@ -1,1 +1,1 @@
-{"dir":"packages/util/package-manifest","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-app-boot","@deepseek-ai/dsh-plugin-market","@deepseek-ai/dsh-plugin-market-index"],"externalDeps":[],"rows":[]}
+{"dir":"packages/test-support/tool-testkit","entries":[],"workspaceDeps":["@deepseek-ai/dsh-llm","@deepseek-ai/dsh-tools"],"dependents":[],"externalDeps":[],"rows":[]}

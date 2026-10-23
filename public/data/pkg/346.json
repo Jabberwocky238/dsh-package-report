@@ -1,1 +1,1 @@
-{"dir":"apps/web","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-web-app"],"externalDeps":[],"rows":[]}
+{"dir":"packages/util/plugin-detail","entries":[],"workspaceDeps":[],"dependents":["@deepseek-ai/dsh-plugin-manager","@deepseek-ai/dsh-plugin-market"],"externalDeps":[],"rows":[]}
